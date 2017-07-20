@@ -55,5 +55,11 @@
     <None Include="Shaders\vertex.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\lampFragment.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\lampVertex.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

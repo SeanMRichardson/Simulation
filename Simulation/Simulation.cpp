@@ -1,6 +1,7 @@
 // Simulation.cpp : Defines the entry point for the console application.
 
 #include "stdafx.h"
+#include <stdio.h>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -16,8 +17,8 @@
 
 #include "Shader.h"
 
-#define MESHWIDTH 16
-#define MESHHEIGHT 16
+#define MESHWIDTH 257
+#define MESHHEIGHT 257
 
 void processInput(GLFWwindow* window);
 void mouseCallback(GLFWwindow* window, double xPos, double yPos);
@@ -65,9 +66,6 @@ int main()
 	// create the window
 	GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "My Window", nullptr, nullptr);
 
-	
-
-
 	if (nullptr == window)
 	{
 		std::cout << "failed to create window" << std::endl;
@@ -109,29 +107,42 @@ int main()
 	int indexCount = (MESHWIDTH)*(MESHHEIGHT) * 6;
 	GLuint* indices = new GLuint[indexCount];
 
-	std::ifstream file("Textures/Kilamanjaro.Raw", std::ios::binary);
-	if (!file) {
+	FILE *f = NULL;
+
+	f = fopen("Textures/Kilamanjaro.Raw", "rb");
+	if (f == NULL)
+	{
 		return EXIT_FAILURE;
 	}
 
 	numVerts = MESHWIDTH * MESHHEIGHT;
 	vertices = new glm::vec3[numVerts];
-	
-	unsigned char * data = new unsigned char[numVerts];
-	file.read((char *)data, numVerts * sizeof(unsigned char));
-	file.close();
+
+	GLbyte* data = new GLbyte[numVerts];
+
+	fread(data, 1, numVerts, f);
+
+	int result = ferror(f);
+	if (result)
+	{
+		return EXIT_FAILURE;
+	}
+
+	fclose(f);
 
 	for (int x = 0; x < MESHWIDTH; ++x)
 	{
 		for (int z = 0; z < MESHHEIGHT; ++z)
 		{
-			int offset = (x * MESHWIDTH) + z;
-			vertices[offset] = glm::vec3(x, data[offset], -z);
+			if ((x < MESHWIDTH) && (z < MESHHEIGHT))
+			{
+				int offset = (x * MESHWIDTH) + z;
+				vertices[offset] = glm::vec3(x, abs(data[offset]), z);
+			}
 		}
 	}
-
 	GLuint numIndices = 0;
-	bool tri = true;
+	bool tri = false;
 
 	for (int x = 0; x < MESHWIDTH - 1; ++x)
 	{
@@ -142,7 +153,6 @@ int main()
 			long c, d;
 			c = ((x + 1) * (MESHWIDTH)) + (z + 1);
 			d = (x * (MESHWIDTH)) + (z + 1);
-
 
 			if (tri)
 			{
@@ -168,7 +178,7 @@ int main()
 		}
 	}
 
-
+	//int num = sizeof(indices);
 	glEnable(GL_DEPTH_TEST);
 
 	shader = new Shader("Shaders/vertex.glsl", "Shaders/fragment.glsl");
@@ -198,7 +208,7 @@ int main()
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)(3*sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -223,7 +233,7 @@ int main()
 		glUseProgram(shader->GetProgram());
 
 		glm::mat4 proj;
-		proj = glm::perspective(glm::radians(45.0f), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
+		proj = glm::perspective(glm::radians(45.0f), (float)screenWidth / (float)screenHeight, 0.1f, 10000.0f);
 
 		glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "proj"), 1, GL_FALSE, glm::value_ptr(proj));
 
@@ -246,7 +256,7 @@ int main()
 		glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "model"), 1, GL_FALSE, glm::value_ptr(model));
 
 		//glDrawArrays(GL_TRIANGLES, 0, 6);
-		glDrawElements(GL_TRIANGLES, indexCount * sizeof(GLuint), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
 
 		// write to buffer
 		glfwSwapBuffers(window);

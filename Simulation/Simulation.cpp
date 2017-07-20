@@ -8,66 +8,36 @@
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+
+#include "Shader.h"
+
+void processInput(GLFWwindow* window);
+void mouseCallback(GLFWwindow* window, double xPos, double yPos);
+void scrollCallback(GLFWwindow* window, double xOffset, double yOffest);
+
 
 const GLint WIDTH = 800, HEIGHT = 600;
 
-bool LoadShaderFile(std::string from, std::string& into)
-{
-	std::ifstream file;
-	std::string temp;
+Shader* shader;
 
-	std::cout << "Loading Shader Text From " << from << std::endl << std::endl;
-	file.open(from.c_str());
-	if (!file.is_open())
-	{
-		std::cout << "File does not exist!" << std::endl;
-		return false;
-	}
-	while (!file.eof())
-	{
-		std::getline(file, temp);
-		into += temp + "\n";
-	}
+glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
-	file.close();
-	std::cout << into << std::endl << std::endl;
-	std::cout << "Loaded shader text!" << std::endl << std::endl;
-	return true;
-}
+bool firstMouse = true;
+float yaw = -90.0f;
+float pitch = 0.0f;
+float lastX = WIDTH / 2.0f;
+float lastY = HEIGHT / 2.0f;
+float fov = 45.0f;
 
-GLuint GenerateShader(std::string from, GLenum type)
-{
-	std::cout << "Compiling Shader..." << std::endl;
-
-	std::string load;
-	if (!LoadShaderFile(from, load))
-	{
-		std::cout << "Compiling Failed!" << std::endl;
-		return 0;
-	}
-
-	GLuint shader = glCreateShader(type);
-
-	const char* chars = load.c_str();
-	glShaderSource(shader, 1, &chars, NULL);
-	glCompileShader(shader);
-
-	GLint status;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-
-	if (status == GL_FALSE)
-	{
-		std::cout << "Compiling Failed" << std::endl;
-		char error[512];
-		glGetInfoLogARB(shader, sizeof(error), NULL, error);
-		std::cout << error;
-		return 0;
-	}
-
-	std::cout << "Compiling Success" << std::endl << std::endl;
-	return shader;
-}
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
 
 int main()
 {
@@ -93,6 +63,7 @@ int main()
 	// get the actual window size
 	int screenWidth, screenHeight;
 	glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
+	
 
 	if (nullptr == window)
 	{
@@ -104,6 +75,10 @@ int main()
 
 	// attach window
 	glfwMakeContextCurrent(window);
+	glfwSetCursorPosCallback(window, mouseCallback);
+	glfwSetScrollCallback(window, scrollCallback);
+
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	// use modern approach to retrieve function pointers etc.
 	glewExperimental = GL_TRUE;
@@ -120,78 +95,195 @@ int main()
 	glViewport(0, 0, screenWidth, screenHeight);
 
 	//store geometry vertices
-	float vertices[] =
+	GLfloat vertices[] =
 	{
-		-0.5f,-0.5f,0.0f,
-		 0.5f,-0.5f,0.0f,
-		 0.f , 0.5f,0.0f
+		-0.5f, -0.5f, -0.5f,  
+		0.5f, -0.5f, -0.5f,  
+		0.5f,  0.5f, -0.5f, 
+		0.5f,  0.5f, -0.5f,  
+		-0.5f,  0.5f, -0.5f,  
+		-0.5f, -0.5f, -0.5f,
+
+		-0.5f, -0.5f,  0.5f,
+		0.5f, -0.5f,  0.5f,
+		0.5f,  0.5f,  0.5f,
+		0.5f,  0.5f,  0.5f,
+		-0.5f,  0.5f,  0.5f,
+		-0.5f, -0.5f,  0.5f,
+
+		-0.5f,  0.5f,  0.5f,  
+		-0.5f,  0.5f, -0.5f,  
+		-0.5f, -0.5f, -0.5f,  
+		-0.5f, -0.5f, -0.5f,  
+		-0.5f, -0.5f,  0.5f,  
+		-0.5f,  0.5f,  0.5f,  
+
+		0.5f,  0.5f,  0.5f, 
+		0.5f,  0.5f, -0.5f, 
+		0.5f, -0.5f, -0.5f, 
+		0.5f, -0.5f, -0.5f, 
+		0.5f, -0.5f,  0.5f, 
+		0.5f,  0.5f,  0.5f, 
+
+		-0.5f, -0.5f, -0.5f,
+		0.5f, -0.5f, -0.5f, 
+		0.5f, -0.5f,  0.5f, 
+		0.5f, -0.5f,  0.5f, 
+		-0.5f, -0.5f,  0.5f,
+		-0.5f, -0.5f, -0.5f,
+
+		-0.5f,  0.5f, -0.5f,
+		0.5f,  0.5f, -0.5f, 
+		0.5f,  0.5f,  0.5f, 
+		0.5f,  0.5f,  0.5f, 
+		-0.5f,  0.5f,  0.5f,
+		-0.5f,  0.5f, -0.5f
 	};
 
-	// create vbo
-	GLuint vbo;
-	glGenBuffers(1, &vbo);
+	glm::vec3 cubePositions[] = {
+		glm::vec3(0.0f,  0.0f,  0.0f),
+		glm::vec3(2.0f,  5.0f, -15.0f),
+		glm::vec3(-1.5f, -2.2f, -2.5f),
+		glm::vec3(-3.8f, -2.0f, -12.3f),
+		glm::vec3(2.4f, -0.4f, -3.5f),
+		glm::vec3(-1.7f,  3.0f, -7.5f),
+		glm::vec3(1.3f, -2.0f, -2.5f),
+		glm::vec3(1.5f,  2.0f, -2.5f),
+		glm::vec3(1.5f,  0.2f, -1.5f),
+		glm::vec3(-1.3f,  1.0f, -1.5f)
+	};
+
+	GLuint indices[] =
+	{
+		0,1,3,
+		1,2,3
+	};
+
+	GLfloat texCoords[] =
+	{
+		0.0f, 0.0f,
+		1.0f, 0.0f,
+		0.0f, 1.0f,
+		1.0f, 1.0f
+	};
+
+	shader = new Shader("Shaders/vertex.glsl", "Shaders/fragment.glsl");
+	if (!shader->LinkProgram())
+	{
+		return 0;
+	}
+
+	
 
 	// create a vao
 	GLuint vao;
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
+	// create vbo
+	GLuint vbo;
+	glGenBuffers(1, &vbo);
 	// bind the buffer as an aaray buffer
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
 	//store the buffer data
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-	
-	GenerateShader("Shaders/fragment.glsl", GL_FRAGMENT_SHADER);
-
-	GLuint shaderProg;
-	shaderProg = glCreateProgram();
-
-	GLuint vert = GenerateShader("Shaders/vertex.glsl", GL_VERTEX_SHADER);
-	GLuint frag = GenerateShader("Shaders/fragment.glsl", GL_FRAGMENT_SHADER);
-	glAttachShader(shaderProg, vert);
-	glAttachShader(shaderProg, frag);
-
-	glLinkProgram(shaderProg);
-
-	GLint success;
-	GLchar infoLog[512];
-
-	glGetProgramiv(shaderProg, GL_LINK_STATUS, &success);
-	if (!success)
-	{
-		glGetProgramInfoLog(shaderProg, 512, NULL, infoLog);
-		std::cout << infoLog << std::endl;
-	}
-
-	glUseProgram(shaderProg);
+	GLuint ebo;
+	glGenBuffers(1, &ebo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
 	glEnableVertexAttribArray(0);
 
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	GLint numAttributes;
+	glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &numAttributes);
+	std::cout << "Maximum number of vertex attributes supported: " << numAttributes << std::endl;
+
+	/*GLuint texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	GLint width, height, numChannels;
+	unsigned char* data = ;*/
+
+	//glm::mat4 trans;
+	//trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
+	//trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+	////trans = glm::scale(trans, glm::vec3(0.5f, 0.5f, 0.5f));
+
+	//GLuint transformLoc = glGetUniformLocation(shader->GetProgram(), "transform");
+	//glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+	glUseProgram(shader->GetProgram());
+	
+	
+	
+
 	// simulation loop
 	while (!glfwWindowShouldClose(window))
 	{
+		float currentFrame = glfwGetTime();
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
+
 		// get events
 		glfwPollEvents();
+		processInput(window);
 
 		// reset the color
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		float radius = 10.0f;
+		float camX = sin(glfwGetTime()) * radius;
+		float camZ = cos(glfwGetTime()) * radius;
+
+		glm::mat4 view;
+		view = glm::lookAt(	cameraPos, cameraPos + cameraFront, cameraUp);
+
+		glm::mat4 proj;
+		proj = glm::perspective(glm::radians(fov), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
+
 		// draw stuff
-		glUseProgram(shaderProg);
-		glBindVertexArray(vao);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glUseProgram(shader->GetProgram());
+
+		/*glm::mat4 model;
+		model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));*/
 		
+		glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "view"), 1, GL_FALSE, glm::value_ptr(view));
+		glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "proj"), 1, GL_FALSE, glm::value_ptr(proj));
+
+		glBindVertexArray(vao);	
+		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		//glBindVertexArray(0);
+
+		//for (unsigned int i = 0; i < 10; i++)
+		//{
+			// calculate the model matrix for each object and pass it to shader before drawing
+			glm::mat4 model;
+			model = glm::translate(model, cubePositions[0]);
+			float angle = 20.0f * 1;
+			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+			glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+		//}
+
 		// write to buffer
 		glfwSwapBuffers(window);
 	}
 
-	glDeleteShader(vert);
-	glDeleteShader(frag);
-
+	delete shader;
+	glDeleteVertexArrays(1, &vao);
+	glDeleteBuffers(1, &vbo);
+	glDeleteBuffers(1, &ebo);
 	// tidy up
 	glfwTerminate();
 
@@ -199,3 +291,61 @@ int main()
 
 }
 
+void processInput(GLFWwindow* window)
+{
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
+
+	float cameraSpeed = 2.5f * deltaTime;
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		cameraPos += cameraSpeed * cameraFront;
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		cameraPos -= cameraSpeed * cameraFront;
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+}
+
+void mouseCallback(GLFWwindow* window, double xPos, double yPos)
+{
+	if (firstMouse)
+	{
+		lastX = xPos;
+		lastY = yPos;
+		firstMouse = false;
+	}
+
+	float xoffset = xPos - lastX;
+	float yoffset = lastY - yPos;
+	lastX = xPos;
+	lastY = yPos;
+
+	float sensitivity = 0.01f;
+	xoffset *= sensitivity;
+	yoffset *= sensitivity;
+
+	yaw += xoffset;
+	pitch += yoffset;
+
+	if (pitch > 89.0f)
+		pitch = 89.0f;
+	if (pitch < 89.0f)
+		pitch = 89.0f;
+	
+	glm::vec3 front;
+	front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+	front.y = sin(glm::radians(pitch));
+	front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+	cameraFront = glm::normalize(front);
+}
+
+void scrollCallback(GLFWwindow* window, double xOffset, double yOffest)
+{
+	if (fov >= 1.0f && fov <= 45.0f)
+		fov -= yOffest;
+	if (fov <= 1.0f)
+		fov = 1.0f;
+	if (fov >= 45.0f)
+		fov = 45.0f;
+}

@@ -16,6 +16,7 @@
 
 
 #include "Shader.h"
+#include "Camera.h"
 
 #define MESHWIDTH 257
 #define MESHHEIGHT 257
@@ -24,159 +25,48 @@ void processInput(GLFWwindow* window);
 void mouseCallback(GLFWwindow* window, double xPos, double yPos);
 void scrollCallback(GLFWwindow* window, double xOffset, double yOffest);
 
+int init();
+void SetUp();
+void GenerateVertices(glm::vec3* vertices, GLbyte* data);
+GLuint GenerateIndices(GLuint* indices, GLuint numIndices);
+GLbyte* ReadHeightData(char* string, int numVerts);
 
 const GLint WIDTH = 800, HEIGHT = 600;
+
+GLFWwindow *window;
+int screenWidth, screenHeight;
 
 Shader* shader;
 
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, -3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-
-bool firstMouse = true;
-float yaw = -90.0f;
-float pitch = 0.0f;
+Camera camera(glm::vec3(0, 20, 20));
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
-float fov = 45.0f;
+bool firstMouse = true;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+glm::vec3* vertices;
+GLuint* indices;
+int numVerts;
+GLint numIndices;
+int indexCount;
+GLbyte* data;
+
+GLuint vao, vbo, ebo;
+
 int main()
 {
-	// init glfw
-	glfwInit();
-
-	// set the version
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-
-	// use new opengl and maximise compatibility
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-	// forward compatibility
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-
-	// set fixed
-	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-
-	// create the window
-	GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "My Window", nullptr, nullptr);
-
-	if (nullptr == window)
-	{
-		std::cout << "failed to create window" << std::endl;
-		glfwTerminate();
-
-		return EXIT_FAILURE;
-	}
-
-	// attach window
-	glfwMakeContextCurrent(window);
-
-	// get the actual window size
-	int screenWidth, screenHeight;
-	glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
-
-	//// camera bindings
-	glfwSetCursorPosCallback(window, mouseCallback);
-	glfwSetScrollCallback(window, scrollCallback);
-
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-	// use modern approach to retrieve function pointers etc.
-	glewExperimental = GL_TRUE;
-
-	// and initialise
-	if (GLEW_OK != glewInit())
-	{
-
-		std::cout << "Failed to init GLEW" << std::endl;
-		return EXIT_FAILURE;
-	}
-
-	// set viewport
-	glViewport(0, 0, screenWidth, screenHeight);
-
-	//store geometry vertices
-	int numVerts = MESHWIDTH*MESHHEIGHT;
-	glm::vec3* vertices = new glm::vec3[numVerts];
-	int indexCount = (MESHWIDTH)*(MESHHEIGHT) * 6;
-	GLuint* indices = new GLuint[indexCount];
-
-	FILE *f = NULL;
-
-	f = fopen("Textures/Kilamanjaro.Raw", "rb");
-	if (f == NULL)
+	if (!init())
 	{
 		return EXIT_FAILURE;
 	}
-
-	numVerts = MESHWIDTH * MESHHEIGHT;
-	vertices = new glm::vec3[numVerts];
-
-	GLbyte* data = new GLbyte[numVerts];
-
-	fread(data, 1, numVerts, f);
-
-	int result = ferror(f);
-	if (result)
-	{
-		return EXIT_FAILURE;
-	}
-
-	fclose(f);
-
-	for (int x = 0; x < MESHWIDTH; ++x)
-	{
-		for (int z = 0; z < MESHHEIGHT; ++z)
-		{
-			if ((x < MESHWIDTH) && (z < MESHHEIGHT))
-			{
-				int offset = (x * MESHWIDTH) + z;
-				vertices[offset] = glm::vec3(x, abs(data[offset]), z);
-			}
-		}
-	}
-	GLuint numIndices = 0;
-	bool tri = false;
-
-	for (int x = 0; x < MESHWIDTH - 1; ++x)
-	{
-		for (int z = 0; z < MESHHEIGHT - 1; ++z)
-		{
-			long a = (x * (MESHWIDTH)) + z;
-			long b = ((x + 1) * (MESHWIDTH)) + z;
-			long c, d;
-			c = ((x + 1) * (MESHWIDTH)) + (z + 1);
-			d = (x * (MESHWIDTH)) + (z + 1);
-
-			if (tri)
-			{
-				indices[numIndices++] = c;
-				indices[numIndices++] = b;
-				indices[numIndices++] = a;
-
-				indices[numIndices++] = a;
-				indices[numIndices++] = d;
-				indices[numIndices++] = c;
-			}
-			else
-			{
-				indices[numIndices++] = b;
-				indices[numIndices++] = a;
-				indices[numIndices++] = d;
-
-				indices[numIndices++] = d;
-				indices[numIndices++] = c;
-				indices[numIndices++] = b;
-			}
-			tri = !tri;
-		}
-	}
+	
+	data = ReadHeightData("Textures/Kilamanjaro.Raw", numVerts);
+	GenerateVertices(vertices, data);
+	numIndices = GenerateIndices(indices, numIndices);
 
 	//int num = sizeof(indices);
 	glEnable(GL_DEPTH_TEST);
@@ -187,32 +77,7 @@ int main()
 		return 0;
 	}
 
-	// create a vao
-	GLuint vao;
-	glGenVertexArrays(1, &vao);
-	// create vbo
-	GLuint vbo;
-	glGenBuffers(1, &vbo);
-	GLuint ebo;
-	glGenBuffers(1, &ebo);
-
-	glBindVertexArray(vao);
-
-	// bind the buffer as an aaray buffer
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	//store the buffer data
-	glBufferData(GL_ARRAY_BUFFER, numVerts * sizeof(glm::vec3), vertices, GL_STATIC_DRAW);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexCount*sizeof(GLuint), indices, GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)(3*sizeof(GLfloat)));
-	glEnableVertexAttribArray(1);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
+	SetUp();
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -233,18 +98,18 @@ int main()
 		glUseProgram(shader->GetProgram());
 
 		glm::mat4 proj;
-		proj = glm::perspective(glm::radians(45.0f), (float)screenWidth / (float)screenHeight, 0.1f, 10000.0f);
+		proj = glm::perspective(glm::radians(camera.Zoom), (float)screenWidth / (float)screenHeight, 0.1f, 10000.0f);
 
 		glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "proj"), 1, GL_FALSE, glm::value_ptr(proj));
 
 		glm::mat4 view;
-		view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);		
+		view = camera.GetViewMatrix();		
 
 		glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "view"), 1, GL_FALSE, glm::value_ptr(view));
 
 		glUniform3f(glGetUniformLocation(shader->GetProgram(), "lightColour"), 1.0f, 1.0f, 1.0f);
 		glUniform3f(glGetUniformLocation(shader->GetProgram(), "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-		glUniform3f(glGetUniformLocation(shader->GetProgram(), "viewPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+		glUniform3f(glGetUniformLocation(shader->GetProgram(), "viewPos"), camera.Position.x, camera.Position.y, camera.Position.z);
 		
 		glBindVertexArray(vao);
 
@@ -284,13 +149,13 @@ void processInput(GLFWwindow* window)
 
 	float cameraSpeed = 10.0f * deltaTime;
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		cameraPos += cameraSpeed * cameraFront;
+		camera.ProcessKeyboard(FORWARD, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		cameraPos -= cameraSpeed * cameraFront;
+		camera.ProcessKeyboard(BACKWARD, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+		camera.ProcessKeyboard(LEFT, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+		camera.ProcessKeyboard(RIGHT, deltaTime);
 
 }
 
@@ -312,27 +177,186 @@ void mouseCallback(GLFWwindow* window, double xPos, double yPos)
 	xoffset *= sensitivity;
 	yoffset *= sensitivity;
 
-	yaw += xoffset;
-	pitch += yoffset;
-
-	/*if (pitch > 89.0f)
-		pitch = 89.0f;*/
-	/*if (pitch < -89.0f)
-		pitch = -89.0f;*/
-	
-	glm::vec3 front;
-	front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-	front.y = sin(glm::radians(pitch));
-	front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-	cameraFront = glm::normalize(front);
+	camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
 void scrollCallback(GLFWwindow* window, double xOffset, double yOffest)
 {
-	if (fov >= 1.0f && fov <= 45.0f)
-		fov -= yOffest;
-	if (fov <= 1.0f)
-		fov = 1.0f;
-	if (fov >= 45.0f)
-		fov = 45.0f;
+	camera.ProcessMouseScroll(yOffest);
+}
+
+int init()
+{
+	// init glfw
+	glfwInit();
+
+	// set the version
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+
+	// use new opengl and maximise compatibility
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	// forward compatibility
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+
+	// set fixed
+	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+
+	// create the window
+	window = glfwCreateWindow(WIDTH, HEIGHT, "My Window", nullptr, nullptr);
+
+	if (nullptr == window)
+	{
+		std::cout << "failed to create window" << std::endl;
+		glfwTerminate();
+
+		return EXIT_FAILURE;
+	}
+
+	// attach window
+	glfwMakeContextCurrent(window);
+
+	// get the actual window size
+	glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
+
+	//// camera bindings
+	glfwSetCursorPosCallback(window, mouseCallback);
+	glfwSetScrollCallback(window, scrollCallback);
+
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+	// use modern approach to retrieve function pointers etc.
+	glewExperimental = GL_TRUE;
+
+	// and initialise
+	if (GLEW_OK != glewInit())
+	{
+
+		std::cout << "Failed to init GLEW" << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	// set viewport
+	glViewport(0, 0, screenWidth, screenHeight);
+
+	//store geometry vertices
+	numVerts = MESHWIDTH*MESHHEIGHT;
+	vertices = new glm::vec3[numVerts];
+	indexCount = (MESHWIDTH)*(MESHHEIGHT) * 6;
+	indices = new GLuint[indexCount];
+	numIndices = 0;
+
+	numVerts = MESHWIDTH * MESHHEIGHT;
+	vertices = new glm::vec3[numVerts];
+
+	return 0;
+}
+
+void SetUp()
+{
+	// create a vertex array
+	glGenVertexArrays(1, &vao);
+	// create vertex buffer
+	glGenBuffers(1, &vbo);
+	//create element buffer
+	glGenBuffers(1, &ebo);
+
+	// bind the vertex array
+	glBindVertexArray(vao);
+
+	// bind the buffer as an aaray buffer
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	//store the buffer data
+	glBufferData(GL_ARRAY_BUFFER, numVerts * sizeof(glm::vec3), vertices, GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexCount * sizeof(GLuint), indices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(1);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+}
+
+void GenerateVertices(glm::vec3* vertices, GLbyte* data)
+{
+	for (int x = 0; x < MESHWIDTH; ++x)
+	{
+		for (int z = 0; z < MESHHEIGHT; ++z)
+		{
+			if ((x < MESHWIDTH) && (z < MESHHEIGHT))
+			{
+				int offset = (x * MESHWIDTH) + z;
+				vertices[offset] = glm::vec3(x, abs(data[offset]), z);
+			}
+		}
+	}
+}
+
+GLuint GenerateIndices(GLuint* indices, GLuint numIndices)
+{
+	bool tri = false;
+
+	for (int x = 0; x < MESHWIDTH - 1; ++x)
+	{
+		for (int z = 0; z < MESHHEIGHT - 1; ++z)
+		{
+			long a = (x * (MESHWIDTH)) + z;
+			long b = ((x + 1) * (MESHWIDTH)) + z;
+			long c, d;
+			c = ((x + 1) * (MESHWIDTH)) + (z + 1);
+			d = (x * (MESHWIDTH)) + (z + 1);
+
+			if (tri)
+			{
+				indices[numIndices++] = c;
+				indices[numIndices++] = b;
+				indices[numIndices++] = a;
+
+				indices[numIndices++] = a;
+				indices[numIndices++] = d;
+				indices[numIndices++] = c;
+			}
+			else
+			{
+				indices[numIndices++] = b;
+				indices[numIndices++] = a;
+				indices[numIndices++] = d;
+
+				indices[numIndices++] = d;
+				indices[numIndices++] = c;
+				indices[numIndices++] = b;
+			}
+			tri = !tri;
+		}
+	}
+	return numIndices;
+}
+
+GLbyte* ReadHeightData(char* string, int numVerts)
+{
+	FILE *f = NULL;
+
+	f = fopen(string, "rb");
+	if (f == NULL)
+	{
+		std::cout << "Error: could not find/open file" << std::endl;
+	}
+
+	GLbyte* data = new GLbyte[numVerts];
+
+	fread(data, 1, numVerts, f);
+
+	int result = ferror(f);
+	if (result)
+	{
+		std::cout << "Error: could not read file" << std::endl;
+	}
+
+	fclose(f);
+	return data;
 }

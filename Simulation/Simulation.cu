@@ -29,9 +29,12 @@ calculate_vertices_kernel(float3* vertices, GLbyte* data, int width, int height)
 
 	int offset = (x * width) + z;
 
-	vertices[offset].x = x;
-	vertices[offset].y = abs(data[offset]);
-	vertices[offset].z = z;	
+	if (x < width && z < height)
+	{
+		vertices[offset].x = x;
+		vertices[offset].y = abs(data[offset]);
+		vertices[offset].z = z;
+	}
 }
 
 __global__ void add(int *a, int *b, int *c) {
@@ -46,7 +49,7 @@ extern "C" void Add(int* a, int* b, int* c)
 extern "C" void CalculateVertices(float3* vertices, GLbyte* data, int width, int height)
 {
 	dim3 block(4, 4);
-	dim3 grid(cuda_iDivUp(256, block.x), cuda_iDivUp(256, block.y));
+	dim3 grid(cuda_iDivUp(width, block.x), cuda_iDivUp(height, block.y));
 	calculate_vertices_kernel << <grid, block >> > (vertices, data, width, height);
 }
 

@@ -187,7 +187,7 @@ int main(int argc, char **argv)
 		glfwPollEvents();
 	}
 
-	delete[] vertices;
+	//delete[] vertices;
 	free(vertices);
 	delete[] indices;
 

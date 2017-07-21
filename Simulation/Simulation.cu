@@ -22,7 +22,7 @@ int cuda_iDivUp(int a, int b)
 }
 
 __global__ void
-calculate_vertices_kernel(float3* vertices, GLbyte* data, int width, int height)
+calculate_vertices_kernel(glm::vec3* vertices, GLbyte* data, int width, int height)
 {
 	GLuint x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	GLuint z = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -32,7 +32,7 @@ calculate_vertices_kernel(float3* vertices, GLbyte* data, int width, int height)
 	if (x < width && z < height)
 	{
 		vertices[offset].x = x;
-		vertices[offset].y = abs(data[offset]);
+		vertices[offset].y = abs(data[offset]*0.4f);
 		vertices[offset].z = z;
 	}
 }
@@ -46,7 +46,7 @@ extern "C" void Add(int* a, int* b, int* c)
 	add << <1, 1 >> > (a, b, c);
 }
 
-extern "C" void CalculateVertices(float3* vertices, GLbyte* data, int width, int height)
+extern "C" void CalculateVertices(glm::vec3* vertices, GLbyte* data, int width, int height)
 {
 	dim3 block(4, 4);
 	dim3 grid(cuda_iDivUp(width, block.x), cuda_iDivUp(height, block.y));

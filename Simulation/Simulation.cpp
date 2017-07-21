@@ -26,6 +26,8 @@
 #include <helper_cuda_gl.h>
 #include <helper_functions.h>
 
+#include <helper_math.h>
+
 #include "Shader.h"
 #include "Camera.h"
 
@@ -38,11 +40,11 @@ void scrollCallback(GLFWwindow* window, double xOffset, double yOffest);
 
 int init();
 void SetUp();
-void GenerateVertices(float3* vertices, GLbyte* data);
+void GenerateVertices(glm::vec3* vertices, GLbyte* data);
 GLuint GenerateIndices(GLuint* indices, GLuint numIndices);
 GLbyte* ReadHeightData(char* string, int numVerts);
 
-extern "C" void CalculateVertices(float3* vertices, GLbyte* data, int width, int height);
+extern "C" void CalculateVertices(glm::vec3* vertices, GLbyte* data, int width, int height);
 
 const GLint WIDTH = 800, HEIGHT = 600;
 
@@ -61,15 +63,16 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-float3* vertices;
+glm::vec3* vertices;
+glm::vec3* normals;
 GLuint* indices;
 int numVerts;
 GLint numIndices;
 int indexCount;
 GLbyte* data;
 
-GLuint vao, vbo, ebo;
-struct cudaGraphicsResource *vboResource, *eboResource;
+GLuint vao, vbo, nbo, ebo;
+struct cudaGraphicsResource *vboResource, *nboResource, *eboResource;
 
 extern "C" void Add(int* a, int* b, int* c);
 
@@ -92,11 +95,11 @@ int main(int argc, char **argv)
 	checkCudaErrors(cudaMalloc((void **)&device_data, numVerts * sizeof(GLbyte)));
 	checkCudaErrors(cudaMemcpy((void*)device_data, (void*)data, numVerts, cudaMemcpyHostToDevice));
 
-	float3* device_vertices;
+	glm::vec3* device_vertices;
 
-	int spectrumSize = MESHWIDTH*MESHHEIGHT * sizeof(float3);
+	int spectrumSize = MESHWIDTH*MESHHEIGHT * sizeof(glm::vec3);
 	checkCudaErrors(cudaMalloc((void **)&device_vertices, spectrumSize));
-	vertices = (float3*)malloc(spectrumSize);
+	vertices = (glm::vec3*)malloc(spectrumSize);
 
 	GenerateVertices(device_vertices, device_data);
 	//GenerateVertices(vertices, data);
@@ -106,6 +109,21 @@ int main(int argc, char **argv)
 	cudaFree(device_vertices);
 
 	numIndices = GenerateIndices(indices, numIndices);
+
+	normals = new glm::vec3[numVerts];
+
+	for (GLuint i = 0; i < numIndices; i += 3)
+	{
+		unsigned int a = indices[i];
+		unsigned int b = indices[i + 1];
+		unsigned int c = indices[i + 2];
+
+		glm::vec3 normal = cross((vertices[b] - vertices[a]), (vertices[c] - vertices[a]));
+
+		normals[a] += normal;
+		normals[b] += normal;
+		normals[c] += normal;
+	}
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -130,13 +148,6 @@ int main(int argc, char **argv)
 
 	SetUp();
 
-	size_t num_bytes;
-
-	// calculate slope for shading
-	checkCudaErrors(cudaGraphicsMapResources(1, &vboResource, 0));
-	checkCudaErrors(cudaGraphicsResourceGetMappedPointer((void **)&data, &num_bytes, vboResource));
-
-	checkCudaErrors(cudaGraphicsUnmapResources(1, &vboResource, 0));
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	// simulation loop
@@ -194,6 +205,7 @@ int main(int argc, char **argv)
 	delete shader;
 	glDeleteVertexArrays(1, &vao);
 	glDeleteBuffers(1, &vbo);
+	glDeleteBuffers(1, &nbo);
 	glDeleteBuffers(1, &ebo);
 	// tidy up
 	glfwTerminate();
@@ -308,6 +320,8 @@ void SetUp()
 	glGenVertexArrays(1, &vao);
 	// create vertex buffer
 	glGenBuffers(1, &vbo);
+	//create normal buffer
+	glGenBuffers(1, &nbo);
 	//create element buffer
 	glGenBuffers(1, &ebo);
 
@@ -320,13 +334,20 @@ void SetUp()
 	glBufferData(GL_ARRAY_BUFFER, numVerts * sizeof(glm::vec3), vertices, GL_STATIC_DRAW);
 	checkCudaErrors(cudaGraphicsGLRegisterBuffer(&vboResource, vbo, cudaGraphicsMapFlagsWriteDiscard));
 
+
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexCount * sizeof(GLuint), indices, GL_STATIC_DRAW);
 	checkCudaErrors(cudaGraphicsGLRegisterBuffer(&eboResource, ebo, cudaGraphicsMapFlagsWriteDiscard));
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,  0, (void*)0);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
+
+	// bind the buffer as an aaray buffer
+	glBindBuffer(GL_ARRAY_BUFFER, nbo);
+	//store the buffer data
+	glBufferData(GL_ARRAY_BUFFER, numVerts * sizeof(glm::vec3), normals, GL_STATIC_DRAW);
+	checkCudaErrors(cudaGraphicsGLRegisterBuffer(&nboResource, nbo, cudaGraphicsMapFlagsWriteDiscard));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 	glEnableVertexAttribArray(1);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -334,7 +355,7 @@ void SetUp()
 	
 }
 
-void GenerateVertices(float3* vertices, GLbyte* data)
+void GenerateVertices(glm::vec3* vertices, GLbyte* data)
 {
 	CalculateVertices(vertices, data, MESHWIDTH, MESHHEIGHT);
 	/*for (int x = 0; x < MESHWIDTH; ++x)

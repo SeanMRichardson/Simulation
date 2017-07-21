@@ -16,6 +16,9 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{17301686-a72f-4c00-a89d-5dbbc1c8eb55}</UniqueIdentifier>
     </Filter>
+    <Filter Include="CUDA files">
+      <UniqueIdentifier>{ff12bb76-1e47-443e-b847-b0b190b715a0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -52,5 +55,10 @@
     <None Include="Shaders\vertex.glsl">
       <Filter>Shaders</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="Simulation.cu">
+      <Filter>CUDA files</Filter>
+    </CudaCompile>
   </ItemGroup>
 </Project>

@@ -15,6 +15,17 @@
 #include <glm/gtc/type_ptr.hpp>
 
 
+// includes, cuda
+#include <driver_functions.h>
+#include <cuda_runtime.h>
+#include <cuda_gl_interop.h>
+
+// CUDA utilities and system includes
+#include <helper_cuda.h>         // helper functions for CUDA error check
+#include <helper_gl.h>
+#include <helper_cuda_gl.h>
+#include <helper_functions.h>
+
 #include "Shader.h"
 #include "Camera.h"
 
@@ -27,9 +38,11 @@ void scrollCallback(GLFWwindow* window, double xOffset, double yOffest);
 
 int init();
 void SetUp();
-void GenerateVertices(glm::vec3* vertices, GLbyte* data);
+void GenerateVertices(float3* vertices, GLbyte* data);
 GLuint GenerateIndices(GLuint* indices, GLuint numIndices);
 GLbyte* ReadHeightData(char* string, int numVerts);
+
+extern "C" void CalculateVertices(float3* vertices, GLbyte* data, int width, int height);
 
 const GLint WIDTH = 800, HEIGHT = 600;
 
@@ -40,7 +53,7 @@ Shader* shader;
 
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
-Camera camera(glm::vec3(0, 20, 20));
+Camera camera(glm::vec3(0, 10, 20));
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -48,7 +61,7 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-glm::vec3* vertices;
+float3* vertices;
 GLuint* indices;
 int numVerts;
 GLint numIndices;
@@ -56,19 +69,44 @@ int indexCount;
 GLbyte* data;
 
 GLuint vao, vbo, ebo;
+struct cudaGraphicsResource *vboResource, *eboResource;
 
-int main()
+extern "C" void Add(int* a, int* b, int* c);
+
+int main(int argc, char **argv)
 {
-	if (!init())
+	if (init() != EXIT_SUCCESS)
 	{
 		return EXIT_FAILURE;
 	}
-	
+	//store geometry vertices
+	numVerts = MESHWIDTH*MESHHEIGHT;
+	//vertices = new float3[numVerts];
+	indexCount = (MESHWIDTH)*(MESHHEIGHT) * 6;
+	indices = new GLuint[indexCount];
+	numIndices = 0;
+
 	data = ReadHeightData("Textures/Kilamanjaro.Raw", numVerts);
-	GenerateVertices(vertices, data);
+	GLbyte* device_data;
+
+	checkCudaErrors(cudaMalloc((void **)&device_data, numVerts * sizeof(GLbyte)));
+	checkCudaErrors(cudaMemcpy((void*)device_data, (void*)data, numVerts, cudaMemcpyHostToDevice));
+
+	float3* device_vertices;
+
+	int spectrumSize = MESHWIDTH*MESHHEIGHT * sizeof(float3);
+	checkCudaErrors(cudaMalloc((void **)&device_vertices, spectrumSize));
+	vertices = (float3*)malloc(spectrumSize);
+
+	GenerateVertices(device_vertices, device_data);
+	//GenerateVertices(vertices, data);
+	checkCudaErrors(cudaMemcpy((void*)vertices, (void*)device_vertices, spectrumSize, cudaMemcpyDeviceToHost));
+
+	cudaFree(device_data);
+	cudaFree(device_vertices);
+
 	numIndices = GenerateIndices(indices, numIndices);
 
-	//int num = sizeof(indices);
 	glEnable(GL_DEPTH_TEST);
 
 	shader = new Shader("Shaders/vertex.glsl", "Shaders/fragment.glsl");
@@ -77,8 +115,28 @@ int main()
 		return 0;
 	}
 
+	if (checkCmdLineFlag(argc, (const char **)argv, "device"))
+	{
+		printf("[%s]\n", argv[0]);
+		printf("   Does not explicitly support -device=n in OpenGL mode\n");
+		printf("   To use -device=n, the sample must be running w/o OpenGL\n\n");
+		printf(" > %s -device=n -qatest\n", argv[0]);
+		printf("exiting...\n");
+
+		exit(EXIT_SUCCESS);
+	}
+
+	findCudaGLDevice(argc, (const char **)argv);
+
 	SetUp();
 
+	size_t num_bytes;
+
+	// calculate slope for shading
+	checkCudaErrors(cudaGraphicsMapResources(1, &vboResource, 0));
+	checkCudaErrors(cudaGraphicsResourceGetMappedPointer((void **)&data, &num_bytes, vboResource));
+
+	checkCudaErrors(cudaGraphicsUnmapResources(1, &vboResource, 0));
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	// simulation loop
@@ -130,6 +188,7 @@ int main()
 	}
 
 	delete[] vertices;
+	free(vertices);
 	delete[] indices;
 
 	delete shader;
@@ -240,17 +299,7 @@ int init()
 	// set viewport
 	glViewport(0, 0, screenWidth, screenHeight);
 
-	//store geometry vertices
-	numVerts = MESHWIDTH*MESHHEIGHT;
-	vertices = new glm::vec3[numVerts];
-	indexCount = (MESHWIDTH)*(MESHHEIGHT) * 6;
-	indices = new GLuint[indexCount];
-	numIndices = 0;
-
-	numVerts = MESHWIDTH * MESHHEIGHT;
-	vertices = new glm::vec3[numVerts];
-
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 void SetUp()
@@ -269,9 +318,11 @@ void SetUp()
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	//store the buffer data
 	glBufferData(GL_ARRAY_BUFFER, numVerts * sizeof(glm::vec3), vertices, GL_STATIC_DRAW);
+	checkCudaErrors(cudaGraphicsGLRegisterBuffer(&vboResource, vbo, cudaGraphicsMapFlagsWriteDiscard));
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexCount * sizeof(GLuint), indices, GL_STATIC_DRAW);
+	checkCudaErrors(cudaGraphicsGLRegisterBuffer(&eboResource, ebo, cudaGraphicsMapFlagsWriteDiscard));
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
 	glEnableVertexAttribArray(0);
@@ -280,21 +331,30 @@ void SetUp()
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
+	
 }
 
-void GenerateVertices(glm::vec3* vertices, GLbyte* data)
+void GenerateVertices(float3* vertices, GLbyte* data)
 {
-	for (int x = 0; x < MESHWIDTH; ++x)
+	CalculateVertices(vertices, data, MESHWIDTH, MESHHEIGHT);
+	/*for (int x = 0; x < MESHWIDTH; ++x)
 	{
 		for (int z = 0; z < MESHHEIGHT; ++z)
 		{
 			if ((x < MESHWIDTH) && (z < MESHHEIGHT))
 			{
-				int offset = (x * MESHWIDTH) + z;
-				vertices[offset] = glm::vec3(x, abs(data[offset]), z);
+				int offset = (x* MESHWIDTH) + z;
+				vertices[offset].x = x;
+				vertices[offset].y = abs(data[offset]);
+				vertices[offset].z = -z;
+
+				printf("Offset = %d ", offset);
+				printf("%d ", x);
+				printf("%d ", abs(data[offset])*0.2);
+				printf("%d \n", z);
 			}
 		}
-	}
+	}*/
 }
 
 GLuint GenerateIndices(GLuint* indices, GLuint numIndices)
@@ -349,7 +409,7 @@ GLbyte* ReadHeightData(char* string, int numVerts)
 
 	GLbyte* data = new GLbyte[numVerts];
 
-	fread(data, 1, numVerts, f);
+	int bytesRead = fread(data, 1, numVerts, f);
 
 	int result = ferror(f);
 	if (result)

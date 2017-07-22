@@ -30,9 +30,18 @@
 
 #include "Shader.h"
 #include "Camera.h"
+#include "MoleculeSystem.h"
 
-#define MESHWIDTH 257
-#define MESHHEIGHT 257
+#define MESH_WIDTH 257
+#define MESH_HEIGHT 257
+
+#define START_X 10
+#define START_Y 5
+#define START_Z 10
+
+const size_t NUM_PARTICLES = 100;
+
+MoleculeSystem* m_system;
 
 void processInput(GLFWwindow* window);
 void mouseCallback(GLFWwindow* window, double xPos, double yPos);
@@ -55,7 +64,7 @@ Shader* shader;
 
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
-Camera camera(glm::vec3(0, 10, 20));
+Camera camera(glm::vec3(START_X, START_Y, START_Z + 5));
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -83,9 +92,9 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 	//store geometry vertices
-	numVerts = MESHWIDTH*MESHHEIGHT;
+	numVerts = MESH_WIDTH*MESH_HEIGHT;
 	//vertices = new float3[numVerts];
-	indexCount = (MESHWIDTH)*(MESHHEIGHT) * 6;
+	indexCount = (MESH_WIDTH)*(MESH_HEIGHT) * 6;
 	indices = new GLuint[indexCount];
 	numIndices = 0;
 
@@ -97,7 +106,7 @@ int main(int argc, char **argv)
 
 	glm::vec3* device_vertices;
 
-	int spectrumSize = MESHWIDTH*MESHHEIGHT * sizeof(glm::vec3);
+	int spectrumSize = MESH_WIDTH*MESH_HEIGHT * sizeof(glm::vec3);
 	checkCudaErrors(cudaMalloc((void **)&device_vertices, spectrumSize));
 	vertices = (glm::vec3*)malloc(spectrumSize);
 
@@ -148,7 +157,9 @@ int main(int argc, char **argv)
 
 	SetUp();
 
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	m_system = new MoleculeSystem(ParticleSystemType::BOX, NUM_PARTICLES, MESH_WIDTH, glm::vec3(START_X, START_Y, START_Z));
+
+	
 
 	// simulation loop
 	while (!glfwWindowShouldClose(window))
@@ -159,38 +170,49 @@ int main(int argc, char **argv)
 
 		processInput(window);
 
-		// reset the color
-		glClearColor(0, 0, 0, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glm::mat4 proj, view;
+		//draw height data
+		{
+			// reset the color
+			glClearColor(0, 0, 0, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			glEnable(GL_PROGRAM_POINT_SIZE);
 
-		// draw stuff
-		glUseProgram(shader->GetProgram());
+			// draw stuff
+			glUseProgram(shader->GetProgram());
 
-		glm::mat4 proj;
-		proj = glm::perspective(glm::radians(camera.Zoom), (float)screenWidth / (float)screenHeight, 0.1f, 10000.0f);
 
-		glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "proj"), 1, GL_FALSE, glm::value_ptr(proj));
+			proj = glm::perspective(glm::radians(camera.Zoom), (float)screenWidth / (float)screenHeight, 0.1f, 10000.0f);
 
-		glm::mat4 view;
-		view = camera.GetViewMatrix();		
+			glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "proj"), 1, GL_FALSE, glm::value_ptr(proj));
 
-		glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "view"), 1, GL_FALSE, glm::value_ptr(view));
+			view = camera.GetViewMatrix();
 
-		glUniform3f(glGetUniformLocation(shader->GetProgram(), "lightColour"), 1.0f, 1.0f, 1.0f);
-		glUniform3f(glGetUniformLocation(shader->GetProgram(), "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-		glUniform3f(glGetUniformLocation(shader->GetProgram(), "viewPos"), camera.Position.x, camera.Position.y, camera.Position.z);
-		
-		glBindVertexArray(vao);
+			glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "view"), 1, GL_FALSE, glm::value_ptr(view));
 
-		glm::mat4 model;
+			glUniform3f(glGetUniformLocation(shader->GetProgram(), "lightColour"), 1.0f, 1.0f, 1.0f);
+			glUniform3f(glGetUniformLocation(shader->GetProgram(), "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+			glUniform3f(glGetUniformLocation(shader->GetProgram(), "viewPos"), camera.Position.x, camera.Position.y, camera.Position.z);
 
-		model = glm::translate(model, glm::vec3(0,0,0));
-		float angle = 20.0f * 0;
-		model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-		glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "model"), 1, GL_FALSE, glm::value_ptr(model));
+			glBindVertexArray(vao);
 
-		//glDrawArrays(GL_TRIANGLES, 0, 6);
-		glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
+			glm::mat4 model;
+
+			model = glm::translate(model, glm::vec3(0, 0, 0));
+			float angle = 20.0f * 0;
+			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+			glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+			//glDrawArrays(GL_TRIANGLES, 0, 6);
+			glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
+		}
+
+		// particle system
+		{
+			m_system->Update(deltaTime, vertices);
+			m_system->Render(proj, view);
+		}
 
 		// write to buffer
 		glfwSwapBuffers(window);
@@ -357,7 +379,7 @@ void SetUp()
 
 void GenerateVertices(glm::vec3* vertices, GLbyte* data)
 {
-	CalculateVertices(vertices, data, MESHWIDTH, MESHHEIGHT);
+	CalculateVertices(vertices, data, MESH_WIDTH, MESH_HEIGHT);
 	/*for (int x = 0; x < MESHWIDTH; ++x)
 	{
 		for (int z = 0; z < MESHHEIGHT; ++z)
@@ -382,15 +404,15 @@ GLuint GenerateIndices(GLuint* indices, GLuint numIndices)
 {
 	bool tri = false;
 
-	for (int x = 0; x < MESHWIDTH - 1; ++x)
+	for (int x = 0; x < MESH_WIDTH - 1; ++x)
 	{
-		for (int z = 0; z < MESHHEIGHT - 1; ++z)
+		for (int z = 0; z < MESH_HEIGHT - 1; ++z)
 		{
-			long a = (x * (MESHWIDTH)) + z;
-			long b = ((x + 1) * (MESHWIDTH)) + z;
+			long a = (x * (MESH_WIDTH)) + z;
+			long b = ((x + 1) * (MESH_WIDTH)) + z;
 			long c, d;
-			c = ((x + 1) * (MESHWIDTH)) + (z + 1);
-			d = (x * (MESHWIDTH)) + (z + 1);
+			c = ((x + 1) * (MESH_WIDTH)) + (z + 1);
+			d = (x * (MESH_WIDTH)) + (z + 1);
 
 			if (tri)
 			{

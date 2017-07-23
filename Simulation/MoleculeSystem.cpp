@@ -45,7 +45,7 @@ void MoleculeSystem::GenerateMolecules(ParticleSystemType pType, glm::vec3 origi
 			{
 				for (int x = 0; x < size; x++)
 				{
-					AddMolecule(Molecule(glm::vec3(x*DENSITY + origin.x, y*DENSITY + origin.y, z*DENSITY + origin.z)));
+					AddMolecule(Molecule(glm::vec3(x*DENSITY + origin.x-0.5f, y*DENSITY + origin.y, z*DENSITY + origin.z -0.5)));
 				}
 			}
 		}
@@ -64,13 +64,14 @@ void MoleculeSystem::KillMolecule()
 }
 
 
-void MoleculeSystem::Update(float deltaTime, glm::vec3* vertices)
+void MoleculeSystem::Update(float deltaTime, glm::vec3* vertices, glm::vec3* normals)
 {
-	for(int i = 0; i < m_molecules.size(); i++)
+	m_dampingFactor = pow(0.85f, deltaTime);
+	for (int i = 0; i < m_molecules.size(); i++)
 	{
 		auto compute_acc = [&](const glm::vec3& pos)
 		{
-			glm::vec3& acc = (m_molecules[i].GetForce() + m_molecules[i].GetImpulseForce()) * m_molecules[i].GetInverseMass();	// apply external forces to the system	
+			glm::vec3& acc = m_molecules[i].GetForce() * m_molecules[i].GetInverseMass();	// apply external forces to the system	
 			return acc;
 		};
 
@@ -79,10 +80,34 @@ void MoleculeSystem::Update(float deltaTime, glm::vec3* vertices)
 		glm::vec3 v1 = m_molecules[i].GetVelocity();
 		glm::vec3 a1 = compute_acc(p1);
 
-		m_molecules[i].SetPosition(m_molecules[i].GetPosition() + (v1 * deltaTime));
-		m_molecules[i].SetVelocity(m_molecules[i].GetVelocity() + (a1 * deltaTime));
+		// second order integration
+		glm::vec3 p2 = p1 + v1 * deltaTime / 2.0f;
+		glm::vec3 v2 = v1 + a1 * deltaTime / 2.0f;
+		glm::vec3 a2 = compute_acc(p2);// compute the acceleration at the second point
+
+		// third order integration
+		glm::vec3 p3 = p1 + v2 * deltaTime / 2.0f;
+		glm::vec3 v3 = v1 + a2 * deltaTime / 2.0f;
+		glm::vec3 a3 = compute_acc(p3);// compute the acceleration at the third point
+
+		// fourth order integration
+		glm::vec3 p4 = p1 + v3 * deltaTime;
+		glm::vec3 v4 = v1 + a3 * deltaTime;
+		glm::vec3 a4 = compute_acc(p4);// compute the acceleration at the fourth point
+
+		m_molecules[i].SetVelocity(m_molecules[i].GetVelocity() * m_dampingFactor );
+
+		m_molecules[i].SetPosition(p1 + ((v1 + (v2 * 2.0f) + (v3 * 2.0f) + v4) * deltaTime) / 6.0f);
+		m_molecules[i].SetVelocity(v1 + ((a1 + (a2 * 2.0f) + (a3 * 2.0f) + a4) * deltaTime) / 6.0f);
 
 		m_molecules[i].SetImpulseForce(glm::vec3(0));
+
+		float height = GetVertexHeight(vertices, m_molecules[i].GetPosition().x, m_molecules[i].GetPosition().z);
+		glm::vec3 normal = GetVertexNormal(normals, m_molecules[i].GetPosition().x, m_molecules[i].GetPosition().z);
+		
+		HandleWallCollision(m_molecules, i);
+		HandleTerrainCollision(m_molecules, normal, height, i);
+		HandleMoleculeCollision(m_molecules, i);
 	}
 }
 
@@ -106,12 +131,236 @@ void MoleculeSystem::Render(glm::mat4 proj, glm::mat4 view)
 	glDisable(m_shader->GetProgram());
 }
 
-float MoleculeSystem::GetVertexHeight(glm::vec3* vertices, float x, float z, int width)
+void MoleculeSystem::HandleTerrainCollision(std::vector<Molecule>& molecules, glm::vec3 normal, float height, int index)
 {
-	int offset = (x*m_meshWidth) + z;
-	return vertices[offset].y;
+	if (CheckMoleculeCollisionWithTerrain(molecules[index], normal, height))
+	{
+		normal = normalize(normal);
+
+		float contactVel = dot(molecules[index].GetVelocity(), normal);
+
+		if (contactVel > 0)
+			return;
+
+		float e = 1.0f;
+		float j = -(1.0f + e) * contactVel;
+		j /= molecules[index].GetInverseMass();
+
+		glm::vec3 impulse = j*normal;
+
+		molecules[index].SetVelocity(m_molecules[index].GetVelocity() + m_molecules[index].GetInverseMass() * impulse * m_dampingFactor);
+	}
 }
 
+void MoleculeSystem::HandleWallCollision(std::vector<Molecule>& molecules, int index)
+{
+	Wall walls[4] = { WALL_LEFT,  WALL_RIGHT,  WALL_FAR,  WALL_NEAR };
+
+	for (int k = 0; k < 4; k++)
+	{
+		if (CheckMoleculeCollisionWithWall(molecules[index], walls[k]))
+		{
+			glm::vec3 wallNormal = normalize(GetWallDirection(walls[k]));
+
+			float contactVel = dot(molecules[index].GetVelocity(), wallNormal);
+
+			if (contactVel > 0)
+				return;
+
+			float e = 1.0f;
+			float j = -(1.0f + e) * contactVel;
+			j /= molecules[index].GetInverseMass();
+
+			glm::vec3 impulse = j*wallNormal;
+
+			molecules[index].SetVelocity(molecules[index].GetVelocity() + molecules[index].GetInverseMass() * impulse * m_dampingFactor);
+			break;
+		}
+	}
+}
+
+void MoleculeSystem::HandleMoleculeCollision(std::vector<Molecule>& molecules, int index)
+{
+	for (int k = 0; k < molecules.size(); k++)
+	{
+		if (molecules[index] != molecules[k])
+		{
+			if (CheckMoleculeMoleculeCollision(&molecules[index], &molecules[k]))
+			{
+				glm::vec3 relativeVelocity = molecules[k].GetVelocity() - molecules[index].GetVelocity();
+				glm::vec3 collisionNormal = molecules[k].GetPosition() - molecules[index].GetPosition();
+
+				float velocityAlongNormal = dot(relativeVelocity, collisionNormal);
+
+				if (velocityAlongNormal > 0)
+					continue;
+
+
+				float e = 0.01f;
+				float j = -(1.0f + e) * velocityAlongNormal;
+				j /= (molecules[index].GetInverseMass() + molecules[k].GetInverseMass());
+
+				glm::vec3 impulse = j*collisionNormal;
+
+				molecules[index].SetVelocity(molecules[index].GetVelocity() - molecules[index].GetInverseMass() * impulse * m_dampingFactor);
+				molecules[k].SetVelocity(molecules[k].GetVelocity() + molecules[index].GetInverseMass() * impulse * m_dampingFactor);
+
+			}
+		}
+	}
+}
+
+float MoleculeSystem::GetVertexHeight(glm::vec3* vertices, float x, float z)
+{
+	float gridSquareSize = m_meshWidth / (m_meshWidth - 1);
+	int gridX = floor(x / gridSquareSize);
+	int gridZ = floor(z / gridSquareSize);
+
+	if (gridX >= m_meshWidth - 1 || gridZ >= m_meshWidth - 1 || gridX < 0 || gridZ < 0)
+		return 0;
+
+	float xCoord = fmod(x, gridSquareSize)/gridSquareSize;
+	float zCoord = fmod(z, gridSquareSize)/gridSquareSize;
+
+	float height;
+
+	if (xCoord <= (1 - zCoord))
+	{
+		int offset1 = (gridX*m_meshWidth) + gridZ;
+		int offset2 = ((gridX +1)*m_meshWidth) + gridZ;
+		int offset3 = (gridX*m_meshWidth) + gridZ +1;
+		height = BarryCentric(glm::vec3(0,vertices[offset1].y,0), glm::vec3(1, vertices[offset2].y, 0), glm::vec3(0, vertices[offset3].y, 1), glm::vec2(xCoord, zCoord));
+	}
+	else
+	{
+		int offset1 = ((gridX + 1)*m_meshWidth) + gridZ;
+		int offset2 = ((gridX +1)*m_meshWidth) + gridZ + 1;
+		int offset3 = (gridX*m_meshWidth) + gridZ + 1;
+		height = BarryCentric(glm::vec3(1, vertices[offset1].y, 0), glm::vec3(1, vertices[offset2].y, 1), glm::vec3(0, vertices[offset3].y, 1), glm::vec2(xCoord, zCoord));
+	}
+
+	return height;
+}
+
+glm::vec3 MoleculeSystem::GetVertexNormal(glm::vec3* normals, float x, float z)
+{
+	float gridSquareSize = m_meshWidth / (m_meshWidth - 1);
+	int gridX = floor(abs(x) / gridSquareSize);
+	int gridZ = floor(abs(z) / gridSquareSize);
+
+	/*if (gridX >= m_meshWidth - 1 || gridZ >= m_meshWidth - 1 || gridX < 0 || gridZ < 0)
+		return glm::vec3(0,0,0);*/
+
+	float xCoord = fmod(x, gridSquareSize) / gridSquareSize;
+	float zCoord = fmod(z, gridSquareSize) / gridSquareSize;
+
+	glm::vec3 normal;
+
+	if (xCoord <= 1 - zCoord)
+	{
+		int offset1 = (gridX*m_meshWidth) + gridZ;
+
+		normal = normals[offset1];
+	}
+	else
+	{
+		int offset1 = ((gridX + 1)*m_meshWidth) + gridZ;
+
+		normal = normals[offset1];
+	}
+
+	return normal;
+}
+
+bool MoleculeSystem::CheckMoleculeCollisionWithTerrain(Molecule m, glm::vec3 planeNormal, float height)
+{
+	glm::vec3 pointOnPlane = glm::vec3(m.GetPosition().x, height, m.GetPosition().z);
+
+	glm::vec3 vector = m.GetPosition() - pointOnPlane;
+
+	float magnitude = glm::length(vector);
+	float normalMagnitude = glm::length(planeNormal);
+
+	float cosAngle = dot(vector, planeNormal) / magnitude* normalMagnitude;
+
+	float distance = cosAngle*magnitude;
+
+	if (distance <= height)
+	{
+		return true;
+	}
+	return false;
+}
+
+bool MoleculeSystem::CheckMoleculeCollisionWithWall(Molecule m, Wall w)
+{
+	glm::vec3 pointOnWall = GetPointOnWall(w);// = glm::vec3(m.GetPosition().x, height, m.GetPosition().z);
+
+	glm::vec3 wallNormal = GetWallDirection(w);
+
+	glm::vec3 vector = m.GetPosition() - pointOnWall;
+
+	float magnitude = glm::length(vector);
+	float normalMagnitude = glm::length(wallNormal);
+
+	float cosAngle = dot(vector, wallNormal) / magnitude* normalMagnitude;
+
+	float distance = cosAngle*magnitude;
+
+	if (distance <= 0)
+	{
+		return true;
+	}
+	return false;
+}
+
+glm::vec3 MoleculeSystem::GetWallDirection(Wall w)
+{
+	switch (w)
+	{
+	case  WALL_LEFT:
+		return glm::vec3(1, 0, 0);
+	case  WALL_RIGHT:
+		return glm::vec3(-1, 0, 0);
+	case  WALL_NEAR:
+		return glm::vec3(0, 0, 1);
+	case  WALL_FAR:
+		return glm::vec3(0, 0, -1);
+	}
+}
+
+glm::vec3 MoleculeSystem::GetPointOnWall(Wall w)
+{
+	switch (w)
+	{
+	case  WALL_LEFT:
+		return glm::vec3(0, 0, (m_meshWidth - 1) / 2);
+	case  WALL_RIGHT:
+		return glm::vec3(m_meshWidth-1, 0, (m_meshWidth - 1) / 2);
+	case  WALL_NEAR:
+		return glm::vec3((m_meshWidth - 1) /2, 0, 0);
+	case  WALL_FAR:
+		return glm::vec3((m_meshWidth - 1) /2, 0, m_meshWidth-1);
+	}
+}
+
+bool MoleculeSystem::CheckMoleculeMoleculeCollision(Molecule* m1, Molecule* m2)
+{
+	glm::vec3 vector = m2->GetPosition() - m1->GetPosition();
+
+	float distance = glm::length(vector);
+	float radii = m1->GetRadius() + m2->GetRadius();
+
+	return distance <= radii;
+}
+
+float MoleculeSystem::BarryCentric(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 pos) {
+	float det = (p2.z - p3.z) * (p1.x - p3.x) + (p3.x - p2.x) * (p1.z - p3.z);
+	float l1 = ((p2.z - p3.z) * (pos.x - p3.x) + (p3.x - p2.x) * (pos.y - p3.z)) / det;
+	float l2 = ((p3.z - p1.z) * (pos.x - p3.x) + (p1.x - p3.x) * (pos.y - p3.z)) / det;
+	float l3 = 1.0f - l1 - l2;
+	return l1 * p1.y + l2 * p2.y + l3 * p3.y;
+}
 
 void MoleculeSystem::Reset()
 {

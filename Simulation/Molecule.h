@@ -17,14 +17,16 @@ public:
 	glm::vec3 GetPosition() const { return m_position; }
 	glm::vec3 GetVelocity() { return m_velocity; }
 	glm::vec3 GetAcceleration() { return m_acceleration; }
-	glm::vec3 GetForce() { return m_force; }
+	glm::vec3 GetForce() { return m_force + m_impulseForce; }
 	glm::vec3 GetImpulseForce() { return m_impulseForce; }
 	float GetInverseMass() { return m_inverseMass; }
+	float GetRadius() { return m_radius; }
 
-	void SetPosition(glm::vec3 position) { m_position = position;  }
+
+	void SetPosition(glm::vec3 position) { m_position = position; }
 	void SetVelocity(glm::vec3 velocity) { m_velocity = velocity; }
 	void AddForce(glm::vec3 force) { m_force += force; }
-	void AddImpuseForce(glm::vec3 force) { m_impulseForce += force; }
+	void AddImpulseForce(glm::vec3 force) { m_impulseForce += force; }
 	void SetImpulseForce(glm::vec3 force) { m_impulseForce = force; }
 
 

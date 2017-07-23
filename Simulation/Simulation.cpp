@@ -35,11 +35,11 @@
 #define MESH_WIDTH 257
 #define MESH_HEIGHT 257
 
-#define START_X 10
-#define START_Y 5
-#define START_Z 10
+#define START_X 250
+#define START_Y 20
+#define START_Z 250
 
-const size_t NUM_PARTICLES = 100;
+const size_t NUM_PARTICLES = 8;
 
 MoleculeSystem* m_system;
 
@@ -64,7 +64,7 @@ Shader* shader;
 
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
-Camera camera(glm::vec3(START_X, START_Y, START_Z + 5));
+Camera camera(glm::vec3(START_X - 5.0f, START_Y, START_Z), glm::vec3(0, 1, 0), 10, 0);
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -210,7 +210,7 @@ int main(int argc, char **argv)
 
 		// particle system
 		{
-			m_system->Update(deltaTime, vertices);
+			m_system->Update(deltaTime, vertices, normals);
 			m_system->Render(proj, view);
 		}
 
@@ -402,39 +402,23 @@ void GenerateVertices(glm::vec3* vertices, GLbyte* data)
 
 GLuint GenerateIndices(GLuint* indices, GLuint numIndices)
 {
-	bool tri = false;
-
 	for (int x = 0; x < MESH_WIDTH - 1; ++x)
 	{
 		for (int z = 0; z < MESH_HEIGHT - 1; ++z)
 		{
 			long a = (x * (MESH_WIDTH)) + z;
 			long b = ((x + 1) * (MESH_WIDTH)) + z;
-			long c, d;
-			c = ((x + 1) * (MESH_WIDTH)) + (z + 1);
-			d = (x * (MESH_WIDTH)) + (z + 1);
+			long c = ((x + 1) * (MESH_WIDTH)) + (z + 1);
+			long d = (x * (MESH_WIDTH)) + (z + 1);
 
-			if (tri)
-			{
-				indices[numIndices++] = c;
-				indices[numIndices++] = b;
-				indices[numIndices++] = a;
+			indices[numIndices++] = c;
+			indices[numIndices++] = b;
+			indices[numIndices++] = a;
 
-				indices[numIndices++] = a;
-				indices[numIndices++] = d;
-				indices[numIndices++] = c;
-			}
-			else
-			{
-				indices[numIndices++] = b;
-				indices[numIndices++] = a;
-				indices[numIndices++] = d;
+			indices[numIndices++] = a;
+			indices[numIndices++] = d;
+			indices[numIndices++] = c;
 
-				indices[numIndices++] = d;
-				indices[numIndices++] = c;
-				indices[numIndices++] = b;
-			}
-			tri = !tri;
 		}
 	}
 	return numIndices;

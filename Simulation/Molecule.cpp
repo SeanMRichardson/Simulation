@@ -22,7 +22,6 @@ Molecule::Molecule(glm::vec3 position) :	id(++s_id),
 											m_radius(1.0f / 7.0f),
 											m_force(glm::vec3(0, -9.81000000f, 0))
 {
-
 	m_inverseMass = 1 / m_mass;
 }
 

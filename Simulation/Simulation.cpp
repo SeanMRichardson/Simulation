@@ -35,11 +35,11 @@
 #define MESH_WIDTH 257
 #define MESH_HEIGHT 257
 
-#define START_X 250
-#define START_Y 20
-#define START_Z 250
+#define START_X 10
+#define START_Y 30
+#define START_Z 10
 
-const size_t NUM_PARTICLES = 8;
+const size_t NUM_PARTICLES = 125;
 
 MoleculeSystem* m_system;
 
@@ -174,7 +174,7 @@ int main(int argc, char **argv)
 		//draw height data
 		{
 			// reset the color
-			glClearColor(0, 0, 0, 1.0f);
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			glEnable(GL_PROGRAM_POINT_SIZE);

@@ -5,6 +5,7 @@
 
 #include "Molecule.h"
 #include "Shader.h"
+#include "Octree.h"
 
 enum ParticleSystemType { BOX };
 enum Wall { WALL_LEFT, WALL_RIGHT, WALL_FAR, WALL_NEAR };
@@ -27,13 +28,16 @@ public:
 	float GetVertexHeight(glm::vec3* vertices, float x, float z);
 	glm::vec3 GetVertexNormal(glm::vec3* normals, float x, float z);
 
+	void BroadphaseCollisionDetection();
+	void NarrowphaseCollisionDetection(glm::vec3* vertices, glm::vec3* normals, float deltaTime);
+
 	bool CheckMoleculeCollisionWithTerrain(Molecule m, glm::vec3 normal, float height = 0.0f);
 	bool CheckMoleculeCollisionWithWall(Molecule m, Wall w);
 	bool CheckMoleculeMoleculeCollision(Molecule* m1, Molecule* m2);
 
 	void HandleTerrainCollision(std::vector<Molecule>& molecules, glm::vec3 normal, float height, int index);
 	void HandleWallCollision(std::vector<Molecule>& molecules, int index);
-	void HandleMoleculeCollision(std::vector<Molecule>& molecules, int index);
+	void HandleMoleculeCollision(CollisionPair* cp);
 
 	float BarryCentric(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 pos);
 	void Reset();
@@ -45,6 +49,7 @@ private:
 	long m_numParticles;
 	long m_maxParticles;
 	std::vector<Molecule> m_molecules;
+	std::vector<CollisionPair> m_BroadphaseCollisionPairs;
 
 	Shader* m_shader;
 

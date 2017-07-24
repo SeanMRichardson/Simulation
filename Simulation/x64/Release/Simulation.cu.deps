@@ -1,4 +1,4 @@
-C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0\include\cuda_runtime.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0\/include\cuda_runtime.h
 c:\program files\nvidia gpu computing toolkit\cuda\v8.0\include\host_config.h
 C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\crtdefs.h
 C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\vcruntime.h
@@ -307,3 +307,183 @@ C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h
 C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wstdio.h
 C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_stdio_config.h
 C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\math.h
+C:\ProgramData\NVIDIA Corporation\CUDA Samples\v8.0\common\inc\GL/glew.h
+C:\Program Files (x86)\Windows Kits\8.1\Include\um\GL/glu.h
+C:\Program Files (x86)\Windows Kits\8.1\Include\shared\winapifamily.h
+C:\Program Files (x86)\Windows Kits\8.1\Include\um\GL/gl.h
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/_fixes.hpp
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\climits
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\cfloat
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\float.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\limits
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\ymath.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\cwchar
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\wchar.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wconio.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wctype.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wdirect.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wio.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_share.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wprocess.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\sys/stat.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\sys/types.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xstddef
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\cstddef
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\initializer_list
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\cassert
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\assert.h
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\fwd.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_int.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\setup.hpp
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\cassert
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\assert.h
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\../simd/platform.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0\/include\cuda.h
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_float.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_vec.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\precision.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_mat.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\vec2.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_vec2.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_vec2.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\vec3.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_vec3.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_vec3.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\vec4.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_vec4.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_vec4.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\mat2x2.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_mat2x2.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_mat2x2.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\func_matrix.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\../mat2x3.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_mat2x3.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_mat2x3.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\../mat2x4.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_mat2x4.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_mat2x4.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\../mat3x2.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_mat3x2.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_mat3x2.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\../mat3x3.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_mat3x3.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_mat3x3.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\../mat3x4.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_mat3x4.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_mat3x4.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\../mat4x2.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_mat4x2.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_mat4x2.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\../mat4x3.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_mat4x3.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_mat4x3.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\../mat4x4.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/type_mat4x4.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_mat4x4.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\func_matrix.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\../geometric.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/func_geometric.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\func_geometric.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\func_exponential.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_vec1.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_vec1.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\func_exponential.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\func_vector_relational.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\func_vector_relational.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\_vectorize.hpp
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\cassert
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\assert.h
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\func_common.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\_fixes.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\func_common.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\trigonometric.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/func_trigonometric.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\func_trigonometric.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\exponential.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\common.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\packing.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/func_packing.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\func_packing.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_half.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\type_half.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\matrix.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\vector_relational.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\integer.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail/func_integer.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\detail\func_integer.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\gtc\../gtc/constants.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\gtc\constants.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\gtc\matrix_transform.inl
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\gtc\../gtc/quaternion.hpp
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\gtc\quaternion.inl
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\cstring
+c:\programdata\nvidia corporation\cuda samples\v8.0\dissertation\development\glm\glm\gtc\type_ptr.inl
+C:\ProgramData\NVIDIA Corporation\CUDA Samples\v8.0\common\inc\helper_cuda.h
+C:\ProgramData\NVIDIA Corporation\CUDA Samples\v8.0\common\inc\helper_string.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\fstream
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\istream
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\ostream
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\ios
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xlocnum
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\cstdio
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\streambuf
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xiosbase
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xlocale
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\stdexcept
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\exception
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\type_traits
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\malloc.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\vcruntime_exception.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\eh.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_terminate.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xstring
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xmemory0
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\cstdint
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\stdint.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\vcruntime.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\new
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\vcruntime_new.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\vcruntime.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xutility
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\utility
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\iosfwd
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\crtdbg.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\vcruntime_new_debug.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xatomic0.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\intrin.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\vcruntime.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\setjmp.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\vcruntime.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\immintrin.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\wmmintrin.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\nmmintrin.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\smmintrin.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\tmmintrin.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\pmmintrin.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\emmintrin.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xmmintrin.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\mmintrin.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\ammintrin.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\typeinfo
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\vcruntime_typeinfo.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\vcruntime.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xlocinfo
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xlocinfo.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\ctype.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\locale.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xfacet
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\system_error
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\cerrno
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\share.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\string
+C:\ProgramData\NVIDIA Corporation\CUDA Samples\v8.0\common\inc\helper_gl.h
+C:\Program Files (x86)\Windows Kits\8.1\Include\um\GL/gl.h
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\iostream
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\sstream
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\algorithm
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\xmemory
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\iterator
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\vector
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\assert.h
+C:\ProgramData\NVIDIA Corporation\CUDA Samples\v8.0\common\inc\helper_math.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0\/include\cuda_runtime.h

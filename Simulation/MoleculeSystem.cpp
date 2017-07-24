@@ -66,6 +66,9 @@ void MoleculeSystem::KillMolecule()
 
 void MoleculeSystem::Update(float deltaTime, glm::vec3* vertices, glm::vec3* normals)
 {
+	BroadphaseCollisionDetection();
+	NarrowphaseCollisionDetection(vertices, normals, deltaTime);
+	
 	m_dampingFactor = pow(0.85f, deltaTime);
 	for (int i = 0; i < m_molecules.size(); i++)
 	{
@@ -85,17 +88,17 @@ void MoleculeSystem::Update(float deltaTime, glm::vec3* vertices, glm::vec3* nor
 		glm::vec3 v2 = v1 + a1 * deltaTime / 2.0f;
 		glm::vec3 a2 = compute_acc(p2);// compute the acceleration at the second point
 
-		// third order integration
+									   // third order integration
 		glm::vec3 p3 = p1 + v2 * deltaTime / 2.0f;
 		glm::vec3 v3 = v1 + a2 * deltaTime / 2.0f;
 		glm::vec3 a3 = compute_acc(p3);// compute the acceleration at the third point
 
-		// fourth order integration
+									   // fourth order integration
 		glm::vec3 p4 = p1 + v3 * deltaTime;
 		glm::vec3 v4 = v1 + a3 * deltaTime;
 		glm::vec3 a4 = compute_acc(p4);// compute the acceleration at the fourth point
 
-		m_molecules[i].SetVelocity(m_molecules[i].GetVelocity() * m_dampingFactor );
+		m_molecules[i].SetVelocity(m_molecules[i].GetVelocity() * m_dampingFactor);
 
 		m_molecules[i].SetPosition(p1 + ((v1 + (v2 * 2.0f) + (v3 * 2.0f) + v4) * deltaTime) / 6.0f);
 		m_molecules[i].SetVelocity(v1 + ((a1 + (a2 * 2.0f) + (a3 * 2.0f) + a4) * deltaTime) / 6.0f);
@@ -104,11 +107,11 @@ void MoleculeSystem::Update(float deltaTime, glm::vec3* vertices, glm::vec3* nor
 
 		float height = GetVertexHeight(vertices, m_molecules[i].GetPosition().x, m_molecules[i].GetPosition().z);
 		glm::vec3 normal = GetVertexNormal(normals, m_molecules[i].GetPosition().x, m_molecules[i].GetPosition().z);
-		
 		HandleWallCollision(m_molecules, i);
 		HandleTerrainCollision(m_molecules, normal, height, i);
-		HandleMoleculeCollision(m_molecules, i);
+		
 	}
+
 }
 
 void MoleculeSystem::Render(glm::mat4 proj, glm::mat4 view)
@@ -129,6 +132,30 @@ void MoleculeSystem::Render(glm::mat4 proj, glm::mat4 view)
 
 	glBindVertexArray(0);
 	glDisable(m_shader->GetProgram());
+}
+
+void MoleculeSystem::BroadphaseCollisionDetection()
+{
+	m_BroadphaseCollisionPairs.clear();
+
+	// create the octree for broadphase collisions
+	Octree* tree = new Octree(glm::vec3(0, 0, 0), m_molecules, m_meshWidth/2);
+	tree->BuildCollisionPairs(&m_BroadphaseCollisionPairs, tree->GetRootNode());
+}
+
+void MoleculeSystem::NarrowphaseCollisionDetection(glm::vec3* vertices, glm::vec3* normals, float deltaTime)
+{
+	if (m_BroadphaseCollisionPairs.size() > 0)
+	{
+		// Iterate over all possible collision pairs and perform accurate collision detection
+		for (size_t i = 0; i < m_BroadphaseCollisionPairs.size(); ++i)
+		{
+			CollisionPair& cp = m_BroadphaseCollisionPairs[i];
+
+
+			HandleMoleculeCollision(&cp);
+		}
+	}
 }
 
 void MoleculeSystem::HandleTerrainCollision(std::vector<Molecule>& molecules, glm::vec3 normal, float height, int index)
@@ -179,33 +206,25 @@ void MoleculeSystem::HandleWallCollision(std::vector<Molecule>& molecules, int i
 	}
 }
 
-void MoleculeSystem::HandleMoleculeCollision(std::vector<Molecule>& molecules, int index)
+void MoleculeSystem::HandleMoleculeCollision(CollisionPair* cp)
 {
-	for (int k = 0; k < molecules.size(); k++)
+	if (CheckMoleculeMoleculeCollision(cp->pObjectA, cp->pObjectB))
 	{
-		if (molecules[index] != molecules[k])
+		glm::vec3 relativeVelocity = cp->pObjectB->GetVelocity() - cp->pObjectA->GetVelocity();
+		glm::vec3 collisionNormal = cp->pObjectB->GetPosition() - cp->pObjectA->GetPosition();
+
+		float velocityAlongNormal = dot(relativeVelocity, collisionNormal);
+
+		if (velocityAlongNormal <= 0)
 		{
-			if (CheckMoleculeMoleculeCollision(&molecules[index], &molecules[k]))
-			{
-				glm::vec3 relativeVelocity = molecules[k].GetVelocity() - molecules[index].GetVelocity();
-				glm::vec3 collisionNormal = molecules[k].GetPosition() - molecules[index].GetPosition();
+			float e = 0.01f;
+			float j = -(1.0f + e) * velocityAlongNormal;
+			j /= (cp->pObjectA->GetInverseMass() + cp->pObjectB->GetInverseMass());
 
-				float velocityAlongNormal = dot(relativeVelocity, collisionNormal);
+			glm::vec3 impulse = j*collisionNormal;
 
-				if (velocityAlongNormal > 0)
-					continue;
-
-
-				float e = 0.01f;
-				float j = -(1.0f + e) * velocityAlongNormal;
-				j /= (molecules[index].GetInverseMass() + molecules[k].GetInverseMass());
-
-				glm::vec3 impulse = j*collisionNormal;
-
-				molecules[index].SetVelocity(molecules[index].GetVelocity() - molecules[index].GetInverseMass() * impulse * m_dampingFactor);
-				molecules[k].SetVelocity(molecules[k].GetVelocity() + molecules[index].GetInverseMass() * impulse * m_dampingFactor);
-
-			}
+			cp->pObjectA->SetVelocity(cp->pObjectA->GetVelocity() - cp->pObjectA->GetInverseMass() * impulse * m_dampingFactor);
+			cp->pObjectB->SetVelocity(cp->pObjectB->GetVelocity() + cp->pObjectB->GetInverseMass() * impulse * m_dampingFactor);
 		}
 	}
 }

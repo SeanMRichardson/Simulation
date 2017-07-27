@@ -50,10 +50,13 @@ void scrollCallback(GLFWwindow* window, double xOffset, double yOffest);
 int init();
 void SetUp();
 void GenerateVertices(glm::vec3* vertices, GLbyte* data);
-GLuint GenerateIndices(GLuint* indices, GLuint numIndices);
+//GLuint GenerateIndices(GLuint* indices, GLuint numIndices);
+void GenerateIndices(GLuint* indices, GLuint numIndices, int width, int height);
 GLbyte* ReadHeightData(char* string, int numVerts);
 
 extern "C" void CalculateVertices(glm::vec3* vertices, GLbyte* data, int width, int height);
+extern "C" void CalculateIndices(GLuint* indices, GLint numIndices, int width, int height);
+extern "C" void CalculateNormals(glm::vec3* normals, GLuint* indices, glm::vec3* vertices, int width, int height);
 
 const GLint WIDTH = 800, HEIGHT = 600;
 
@@ -65,6 +68,8 @@ Shader* shader;
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
 Camera camera(glm::vec3(START_X - 5.0f, START_Y, START_Z), glm::vec3(0, 1, 0), 10, 0);
+//Camera camera(glm::vec3(START_X - 5.0f, START_Y -30, START_Z - 10), glm::vec3(0, 1, 0), 10, 0);
+
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -82,8 +87,7 @@ GLbyte* data;
 
 GLuint vao, vbo, nbo, ebo;
 struct cudaGraphicsResource *vboResource, *nboResource, *eboResource;
-
-extern "C" void Add(int* a, int* b, int* c);
+bool play = false;
 
 int main(int argc, char **argv)
 {
@@ -91,13 +95,16 @@ int main(int argc, char **argv)
 	{
 		return EXIT_FAILURE;
 	}
-	//store geometry vertices
-	numVerts = MESH_WIDTH*MESH_HEIGHT;
-	//vertices = new float3[numVerts];
-	indexCount = (MESH_WIDTH)*(MESH_HEIGHT) * 6;
-	indices = new GLuint[indexCount];
+	
+	// the number of vertices in the terrain file
+	numVerts = MESH_WIDTH * MESH_HEIGHT;
+
+	// the number of indices in the terrain file
+	indexCount = MESH_WIDTH * MESH_HEIGHT * 6;
+	
 	numIndices = 0;
 
+	// read the raw data from the terrain file
 	data = ReadHeightData("Textures/Kilamanjaro.Raw", numVerts);
 	GLbyte* device_data;
 
@@ -106,33 +113,60 @@ int main(int argc, char **argv)
 
 	glm::vec3* device_vertices;
 
-	int spectrumSize = MESH_WIDTH*MESH_HEIGHT * sizeof(glm::vec3);
+	// allocate storage on device for vertex data
+	int spectrumSize = numVerts * sizeof(glm::vec3);
 	checkCudaErrors(cudaMalloc((void **)&device_vertices, spectrumSize));
 	vertices = (glm::vec3*)malloc(spectrumSize);
 
 	GenerateVertices(device_vertices, device_data);
 	//GenerateVertices(vertices, data);
+
+	// read vertices data back from cuda
 	checkCudaErrors(cudaMemcpy((void*)vertices, (void*)device_vertices, spectrumSize, cudaMemcpyDeviceToHost));
 
 	cudaFree(device_data);
+	//cudaFree(device_vertices);
+
+	GLuint* device_indices;
+	checkCudaErrors(cudaMalloc((void **)&device_indices, indexCount * sizeof(GLuint)));
+	indices = (GLuint*)malloc(indexCount * sizeof(GLuint));
+
+	GenerateIndices(device_indices, indexCount, MESH_WIDTH, MESH_HEIGHT);
+	checkCudaErrors(cudaMemcpy((void*)indices, (void*)device_indices, indexCount * sizeof(GLuint), cudaMemcpyDeviceToHost));
+
+	//numIndices = GenerateIndices(indices, numIndices);
+
+	//normals = new glm::vec3[numVerts];
+
+	glm::vec3* device_normals;
+	checkCudaErrors(cudaMalloc((void **)&device_normals, spectrumSize));
+	normals = (glm::vec3*)malloc(spectrumSize);
+
+	
+
+	checkCudaErrors(cudaMemcpy((void*)device_vertices, (void*)vertices, numVerts, cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMemcpy((void*)device_indices, (void*)indices, indexCount, cudaMemcpyHostToDevice));
+
+	CalculateNormals(device_normals, device_indices, device_vertices, MESH_WIDTH, MESH_HEIGHT);
+
+	checkCudaErrors(cudaMemcpy((void*)normals, (void*)device_normals, spectrumSize, cudaMemcpyDeviceToHost));
+
 	cudaFree(device_vertices);
+	cudaFree(device_indices);
+	cudaFree(device_normals);
 
-	numIndices = GenerateIndices(indices, numIndices);
+	//for (GLuint i = 0; i < numIndices; i += 3)
+	//{
+	//	unsigned int a = indices[i];
+	//	unsigned int b = indices[i + 1];
+	//	unsigned int c = indices[i + 2];
 
-	normals = new glm::vec3[numVerts];
+	//	glm::vec3 normal = cross((vertices[b] - vertices[a]), (vertices[c] - vertices[a]));
 
-	for (GLuint i = 0; i < numIndices; i += 3)
-	{
-		unsigned int a = indices[i];
-		unsigned int b = indices[i + 1];
-		unsigned int c = indices[i + 2];
-
-		glm::vec3 normal = cross((vertices[b] - vertices[a]), (vertices[c] - vertices[a]));
-
-		normals[a] += normal;
-		normals[b] += normal;
-		normals[c] += normal;
-	}
+	//	normals[a] += normal;
+	//	normals[b] += normal;
+	//	normals[c] += normal;
+	//}
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -205,11 +239,13 @@ int main(int argc, char **argv)
 			glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "model"), 1, GL_FALSE, glm::value_ptr(model));
 
 			//glDrawArrays(GL_TRIANGLES, 0, 6);
-			glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
+			//glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
+			glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
 		}
 
 		// particle system
 		{
+			if(play)
 			m_system->Update(deltaTime, vertices, normals);
 			m_system->Render(proj, view);
 		}
@@ -249,7 +285,8 @@ void processInput(GLFWwindow* window)
 		camera.ProcessKeyboard(LEFT, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		camera.ProcessKeyboard(RIGHT, deltaTime);
-
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+		play = true;
 }
 
 void mouseCallback(GLFWwindow* window, double xPos, double yPos)
@@ -356,7 +393,6 @@ void SetUp()
 	glBufferData(GL_ARRAY_BUFFER, numVerts * sizeof(glm::vec3), vertices, GL_STATIC_DRAW);
 	checkCudaErrors(cudaGraphicsGLRegisterBuffer(&vboResource, vbo, cudaGraphicsMapFlagsWriteDiscard));
 
-
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexCount * sizeof(GLuint), indices, GL_STATIC_DRAW);
 	checkCudaErrors(cudaGraphicsGLRegisterBuffer(&eboResource, ebo, cudaGraphicsMapFlagsWriteDiscard));
@@ -400,9 +436,11 @@ void GenerateVertices(glm::vec3* vertices, GLbyte* data)
 	}*/
 }
 
-GLuint GenerateIndices(GLuint* indices, GLuint numIndices)
+//GLuint GenerateIndices(GLuint* indices, GLuint numIndices)
+void GenerateIndices(GLuint* indices, GLuint numIndices, int width, int height)
 {
-	for (int x = 0; x < MESH_WIDTH - 1; ++x)
+	CalculateIndices(indices, numIndices, width, height);
+	/*for (int x = 0; x < MESH_WIDTH - 1; ++x)
 	{
 		for (int z = 0; z < MESH_HEIGHT - 1; ++z)
 		{
@@ -421,7 +459,7 @@ GLuint GenerateIndices(GLuint* indices, GLuint numIndices)
 
 		}
 	}
-	return numIndices;
+	return numIndices; */
 }
 
 GLbyte* ReadHeightData(char* string, int numVerts)

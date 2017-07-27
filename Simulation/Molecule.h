@@ -1,4 +1,5 @@
 #pragma once
+#include "defines.h"
 
 #include <GL/glew.h>
 #include <glm/glm.hpp>

@@ -45,7 +45,7 @@ void MoleculeSystem::GenerateMolecules(ParticleSystemType pType, glm::vec3 origi
 			{
 				for (int x = 0; x < size; x++)
 				{
-					AddMolecule(Molecule(glm::vec3(x*DENSITY + origin.x-0.5f, y*DENSITY + origin.y, z*DENSITY + origin.z -0.5)));
+					AddMolecule(Molecule(glm::vec3(x*DENSITY + origin.x - 0.5f, y*DENSITY + origin.y, z*DENSITY + origin.z - 0.5)));
 				}
 			}
 		}

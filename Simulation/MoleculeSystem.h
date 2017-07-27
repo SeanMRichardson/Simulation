@@ -10,7 +10,7 @@
 enum ParticleSystemType { BOX };
 enum Wall { WALL_LEFT, WALL_RIGHT, WALL_FAR, WALL_NEAR };
 
-#define DENSITY 0.5f
+
 
 class MoleculeSystem
 {

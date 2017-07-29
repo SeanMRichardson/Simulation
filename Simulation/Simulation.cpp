@@ -32,14 +32,13 @@
 #include "Camera.h"
 #include "MoleculeSystem.h"
 
-#define MESH_WIDTH 257
-#define MESH_HEIGHT 257
+
 
 #define START_X 10
-#define START_Y 30
+#define START_Y 10
 #define START_Z 10
 
-const size_t NUM_PARTICLES = 125;
+//const size_t NUM_PARTICLES = 1000;
 
 MoleculeSystem* m_system;
 
@@ -68,7 +67,7 @@ Shader* shader;
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
 Camera camera(glm::vec3(START_X - 5.0f, START_Y, START_Z), glm::vec3(0, 1, 0), 10, 0);
-//Camera camera(glm::vec3(START_X - 5.0f, START_Y -30, START_Z - 10), glm::vec3(0, 1, 0), 10, 0);
+//Camera camera(glm::vec3(0,0,0));
 
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
@@ -96,6 +95,8 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 	
+	findCudaGLDevice(argc, (const char **)argv);
+
 	// the number of vertices in the terrain file
 	numVerts = MESH_WIDTH * MESH_HEIGHT;
 
@@ -134,15 +135,10 @@ int main(int argc, char **argv)
 	GenerateIndices(device_indices, indexCount, MESH_WIDTH, MESH_HEIGHT);
 	checkCudaErrors(cudaMemcpy((void*)indices, (void*)device_indices, indexCount * sizeof(GLuint), cudaMemcpyDeviceToHost));
 
-	//numIndices = GenerateIndices(indices, numIndices);
-
-	//normals = new glm::vec3[numVerts];
-
 	glm::vec3* device_normals;
 	checkCudaErrors(cudaMalloc((void **)&device_normals, spectrumSize));
 	normals = (glm::vec3*)malloc(spectrumSize);
 
-	
 
 	checkCudaErrors(cudaMemcpy((void*)device_vertices, (void*)vertices, numVerts, cudaMemcpyHostToDevice));
 	checkCudaErrors(cudaMemcpy((void*)device_indices, (void*)indices, indexCount, cudaMemcpyHostToDevice));
@@ -151,22 +147,9 @@ int main(int argc, char **argv)
 
 	checkCudaErrors(cudaMemcpy((void*)normals, (void*)device_normals, spectrumSize, cudaMemcpyDeviceToHost));
 
-	cudaFree(device_vertices);
+	
 	cudaFree(device_indices);
 	cudaFree(device_normals);
-
-	//for (GLuint i = 0; i < numIndices; i += 3)
-	//{
-	//	unsigned int a = indices[i];
-	//	unsigned int b = indices[i + 1];
-	//	unsigned int c = indices[i + 2];
-
-	//	glm::vec3 normal = cross((vertices[b] - vertices[a]), (vertices[c] - vertices[a]));
-
-	//	normals[a] += normal;
-	//	normals[b] += normal;
-	//	normals[c] += normal;
-	//}
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -187,11 +170,13 @@ int main(int argc, char **argv)
 		exit(EXIT_SUCCESS);
 	}
 
-	findCudaGLDevice(argc, (const char **)argv);
+	
 
 	SetUp();
 
-	m_system = new MoleculeSystem(ParticleSystemType::BOX, NUM_PARTICLES, MESH_WIDTH, glm::vec3(START_X, START_Y, START_Z));
+
+
+	m_system = new MoleculeSystem(ParticleSystemType::BOX, NUM_PARTICLES, MESH_WIDTH, vertices, glm::vec3(START_X, START_Y, START_Z));
 
 	
 
@@ -245,8 +230,10 @@ int main(int argc, char **argv)
 
 		// particle system
 		{
-			if(play)
-			m_system->Update(deltaTime, vertices, normals);
+			if (play)
+			{
+				m_system->Update(deltaTime, device_vertices, normals);
+			}
 			m_system->Render(proj, view);
 		}
 
@@ -256,6 +243,7 @@ int main(int argc, char **argv)
 		glfwPollEvents();
 	}
 
+	cudaFree(device_vertices);
 	//delete[] vertices;
 	free(vertices);
 	delete[] indices;

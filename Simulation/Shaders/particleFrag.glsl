@@ -16,5 +16,6 @@ void main()
 	vec3 lightDir = vec3(0.25, -1.0, -0.25);
 	// calculate lighting
 	float diffuse = max(0.0, dot(lightDir, N));
-	vFragColor = vec4(0, 0, 1, 1) * diffuse;
+
+	vFragColor = vec4(1, 1, 1, 1) * diffuse;
 }

@@ -177,6 +177,7 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="defines.h" />
     <ClInclude Include="Molecule.h" />
+    <ClInclude Include="MoleculeSystem.cuh" />
     <ClInclude Include="MoleculeSystem.h" />
     <ClInclude Include="Octree.h" />
     <ClInclude Include="Shader.h" />

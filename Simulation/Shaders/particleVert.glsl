@@ -8,6 +8,9 @@ layout(location = 1) in vec4 vColor;
 
 out vec4 outColor;
 
+uniform float pointScale;
+uniform float pointRadius;
+
 void main()
 {
 	vec4 eyePos = matModelview * vVertex;
@@ -17,5 +20,10 @@ void main()
 
 	float dist = length(eyePos.xyz);
 	float att = inversesqrt(0.1f*dist);
-	gl_PointSize = 5.0f * att;
+	//gl_PointSize = 2.0f * att;
+
+	// calculate window-space point size
+	/*vec3 posEye = vec3(gl_ModelViewMatrix * vec4(gl_Vertex.xyz, 1.0));
+	float dist = length(posEye);*/
+	gl_PointSize = pointRadius * (pointScale / dist);
 }

@@ -2,6 +2,7 @@
 
 #include "Molecule.h"
 #include <glm/glm.hpp>
+#include <glm/gtc/constants.hpp>
 #include <GL/glew.h>
 
 #include <cuda_runtime.h>
@@ -84,7 +85,7 @@ __device__ float GetVertexHeight(glm::vec3* vertices, float x, float z)
 }
 
 __global__
-void integrate_velocity_kernel(glm::vec3* pos, glm::vec3*vel, GLuint numberOfParticles, float deltaTime, glm::vec3* vertices)
+void integrate_velocity_kernel(glm::vec3* pos, glm::vec3*vel, glm::vec3* accel, GLuint numberOfParticles, float deltaTime, glm::vec3* vertices)
 {
 	GLuint index = blockIdx.x*blockDim.x + threadIdx.x;
 
@@ -96,17 +97,18 @@ void integrate_velocity_kernel(glm::vec3* pos, glm::vec3*vel, GLuint numberOfPar
 	// get original position and velocity
 	glm::vec3 pPos = pos[index];
 	glm::vec3 pVel = vel[index];
+	glm::vec3 pAcc = accel[index];
 
-	pVel.x += params.gravity.x * deltaTime;
-	pVel.y += params.gravity.y * deltaTime;
-	pVel.z += params.gravity.z * deltaTime;
+	pVel.x += pAcc.x * deltaTime;
+	pVel.y += pAcc.y * deltaTime;
+	pVel.z += pAcc.z * deltaTime;
 	pVel *= params.globalDamping;
 
 	pPos += pVel * deltaTime;
 
-	if (pPos.x > GRID_SIZE - params.particleRadius)
+	if (pPos.x > MESH_WIDTH - params.particleRadius - 1)
 	{
-		pPos.x = GRID_SIZE - params.particleRadius;
+		pPos.x = MESH_WIDTH - params.particleRadius - 1;
 		pVel.x *= params.boundaryDamping;
 	}
 
@@ -116,15 +118,15 @@ void integrate_velocity_kernel(glm::vec3* pos, glm::vec3*vel, GLuint numberOfPar
 		pVel.x *= params.boundaryDamping;
 	}
 
-	if (pPos.y > GRID_SIZE - params.particleRadius)
+	if (pPos.y > MESH_WIDTH - params.particleRadius - 1)
 	{
-		pPos.y = GRID_SIZE - params.particleRadius;
+		pPos.y = MESH_WIDTH - params.particleRadius - 1;
 		pVel.y *= params.boundaryDamping;
 	}
 
-	if (pPos.z > GRID_SIZE - params.particleRadius)
+	if (pPos.z > MESH_WIDTH - params.particleRadius - 1)
 	{
-		pPos.z = GRID_SIZE - params.particleRadius;
+		pPos.z = MESH_WIDTH - params.particleRadius - 1;
 		pVel.z *= params.boundaryDamping;
 	}
 
@@ -134,7 +136,7 @@ void integrate_velocity_kernel(glm::vec3* pos, glm::vec3*vel, GLuint numberOfPar
 		pVel.z *= params.boundaryDamping;
 	}
 
-	float height = GetVertexHeight(vertices, pPos.x, pPos.z);
+	float height = GetVertexHeight(vertices, pPos.z, pPos.x);
 
 	if (pPos.y < height + params.particleRadius)
 	{
@@ -385,7 +387,7 @@ extern "C" void calculateHash(GLuint *gridParticleHash, GLuint *gridParticleInde
 	getLastCudaError("Kernel execution failed");
 }
 
-extern "C" void integrateVelocity(glm::vec3* pos, glm::vec3*vel, GLuint numberOfParticles, float deltaTime, glm::vec3* vertices)
+extern "C" void integrateVelocity(glm::vec3* pos, glm::vec3*vel, glm::vec3* accel, GLuint numberOfParticles, float deltaTime, glm::vec3* vertices)
 {
 	if (numberOfParticles == 0)
 	{
@@ -396,7 +398,7 @@ extern "C" void integrateVelocity(glm::vec3* pos, glm::vec3*vel, GLuint numberOf
 	GLuint blocks;
 	computeGridSize(numberOfParticles, 512, blocks, threads);
 
-	integrate_velocity_kernel << < blocks, threads >> >(pos, vel, numberOfParticles, deltaTime, vertices);
+	integrate_velocity_kernel << < blocks, threads >> >(pos, vel, accel, numberOfParticles, deltaTime, vertices);
 	// check if kernel invocation generated an error
 	getLastCudaError("Kernel execution failed");
 }
@@ -434,4 +436,207 @@ extern "C" void collide(glm::vec3 *newVel, glm::vec3 *sortedPos, glm::vec3 *sort
 
 	// check if kernel invocation generated an error
 	getLastCudaError("Kernel execution failed");
+}
+
+__device__
+float computeCellDensity(GLuint index, glm::vec3 neighbor, glm::vec3 *dPos, GLuint *dHash, GLuint *dIndex, GLuint *dStart, GLuint *dEnd, GLuint numParticles, GLuint numberOfCells)
+{
+	float totalCellDensity = 0.0f;
+	GLuint gridHash = calcGridHash(glm::vec3(neighbor.x, neighbor.y, neighbor.z));
+	if (gridHash == 0xffffffff)
+	{
+		return totalCellDensity;
+	}
+	GLuint start_index = dStart[gridHash];
+
+	float mass = params.mass;
+	float h = params.smoothingRadius;
+	float h2 = h*h;
+	float h4 = h2*h2;
+	float h8 = h4*h4;
+
+	float poly6 = (4.0f*mass) / glm::pi<float>()*h8;
+
+	glm::vec3 neighbouringParticle;
+
+	glm::vec3 r;
+	float r2;
+
+	GLuint neighbor_index;
+
+	if (start_index != 0xffffffff)
+	{
+		GLuint end_index = dEnd[gridHash];
+
+		for (GLuint count_index = start_index; count_index<end_index; count_index++)
+		{
+			neighbor_index = dIndex[count_index];
+			neighbouringParticle = dPos[neighbor_index];
+
+			r = neighbouringParticle - dPos[index];
+			r2 = r.x*r.x + r.y*r.y + r.z*r.z;
+
+			if (r2 < SMALL || r2 >= h2)
+			{
+				continue;
+			}
+
+			totalCellDensity += poly6 * pow(h2 - r2, 3);
+		}
+	}
+
+	return totalCellDensity;
+}
+
+__global__
+void compute_density_kernel(glm::vec3 *dPos, float *dDensity, float *dPressure, GLuint *dHash, GLuint *dIndex, GLuint *dStart, GLuint *dEnd, GLuint numParticles, GLuint numberOfCells)
+{
+	GLuint index = blockIdx.x*blockDim.x + threadIdx.x;
+
+	if (index >= numParticles)
+	{
+		return;
+	}
+
+	glm::vec3 cellPos = calcGridPos(dPos[index]);
+
+	float totalDensity = 0;
+
+	// calculating the density of the neighbouring particles
+	for (int z = -1; z <= 1; z++)
+	{
+		for (int y = -1; y <= 1; y++)
+		{
+			for (int x = -1; x <= 1; x++)
+			{
+				glm::vec3 neighbor_pos = cellPos + glm::vec3(x, y, z);
+				totalDensity += computeCellDensity(index, neighbor_pos, dPos, dHash, dIndex, dStart, dEnd, numParticles, numberOfCells);
+			}
+		}
+	}
+
+	// calculating the density of just this particle
+	float mass = params.mass;
+	float h = params.smoothingRadius;
+	float h2 = h*h;
+	float h4 = h2*h2;
+	float h8 = h4*h4;
+
+	float poly6 = (4.0f*mass) / glm::pi<float>()*h8;
+
+	totalDensity += poly6 * pow(h2,3);
+	dDensity[index] = totalDensity;
+
+	if(totalDensity < SMALL)
+	{
+		dDensity[index] = params.restDensity;
+	}
+
+	float k = params.gasConstant;
+	dPressure[index] = (dDensity[index] - params.restDensity) * k;
+}
+
+__device__
+glm::vec3 computeCellForce(GLuint index, glm::ivec3 neighbor, glm::vec3* dPos, glm::vec3* dVelocity, float* dDensity, float* dPressure, glm::vec3* dAcceleration, GLuint *dHash, GLuint *dIndex, GLuint *dStart, GLuint *dEnd, GLuint numParticles, GLuint numberOfCells)
+{
+	glm::vec3 totalCellForce = glm::vec3(0.0f);
+	GLuint gridHash = calcGridHash(neighbor);
+
+	if (gridHash == 0xffffffff)
+	{
+		return totalCellForce;
+	}
+
+	GLuint startIndex = dStart[gridHash];
+
+	float h = params.smoothingRadius;
+	float h2 = h*h;
+	float h5 = h2*h2*h;
+
+	float spiky = 10 / (glm::pi<float>()*h5);
+	float viscosity = 10 / (9 * glm::pi<float>()*h5);
+	float viscosityCoefficient;
+	
+	glm::vec3 neighbouringParticle;
+	glm::vec3 r;
+
+	GLuint neighbourIndex;
+
+	if (startIndex != 0xffffffff)
+	{
+		GLuint endIndex = dEnd[gridHash];
+
+		for (GLuint countIndex = startIndex; countIndex < endIndex; countIndex++)
+		{
+			neighbourIndex = dIndex[countIndex];
+			neighbouringParticle = dPos[neighbourIndex];
+
+			r = dPos[index] - neighbouringParticle; // relative position between particle and neighbour
+			double dist = glm::length(r);			// distance between the particles
+
+			if (dist != 0.0)
+			{
+				r /= dist; // normalising vector r 
+
+				// acceleration due to pressure -->
+				float diff = (h - dist);
+				float pterm = (dPressure[index] + dPressure[neighbourIndex]) / (2.0f * dDensity[index] * dDensity[neighbourIndex]);
+
+				totalCellForce -= (float)(pterm*spiky*diff*diff)*r;
+				//-->
+
+				// acceleration due to viscosity -->
+				float e = viscosity * diff; // the laplacian coefficient of viscosity
+				glm::vec3 velDifference = dVelocity[neighbourIndex] - dVelocity[index];
+				totalCellForce += (float)(viscosityCoefficient*(1 / dDensity[neighbourIndex]) * e)*velDifference;				
+			}
+		}
+		//acceleration due to gravity
+		totalCellForce.x += params.gravity.x;
+		totalCellForce.y += params.gravity.y;
+		totalCellForce.z += params.gravity.z;
+	}
+	
+	return totalCellForce;
+}
+
+__global__
+void compute_force_kernel(glm::vec3* dPos, glm::vec3* dVelocity, float* dDensity, float* dPressure, glm::vec3* dAcceleration, GLuint *dHash, GLuint *dIndex, GLuint *dStart, GLuint *dEnd, GLuint numParticles, GLuint numberOfCells)
+{
+	GLuint index = blockIdx.x*blockDim.x + threadIdx.x;
+	glm::vec3 totalForce = glm::vec3(0.0f);
+	if (index >= numParticles)
+	{
+		return;
+	}
+
+	glm::ivec3 cell_pos = calcGridPos(dPos[index]);
+
+	for (int z = -1; z <= 1; z++)
+	{
+		for (int y = -1; y <= 1; y++)
+		{
+			for (int x = -1; x <= 1; x++)
+			{
+				glm::ivec3 neighbor_pos = cell_pos + glm::ivec3(x, y, z);
+				totalForce += computeCellForce(index, neighbor_pos, dPos, dVelocity, dDensity, dPressure, dAcceleration, dHash, dIndex, dStart, dEnd, numParticles, numberOfCells);
+			}
+		}
+	}
+	dAcceleration[index] = totalForce;
+}
+
+extern "C" void computeSPH(glm::vec3 *dPos, glm::vec3* dVelocity, float *dDensity, float *dPressure, glm::vec3* dAcceleration, GLuint *dHash, GLuint *dIndex, GLuint *dStart, GLuint *dEnd, GLuint numParticles, GLuint numberOfCells)
+{
+	if (numParticles == 0)
+	{
+		return;
+	}
+
+	GLuint numThreads;
+	GLuint numBlocks;
+	computeGridSize(numParticles, 512, numBlocks, numThreads);
+	
+	compute_density_kernel <<< numBlocks, numThreads >> >(dPos, dDensity, dPressure, dHash, dIndex, dStart, dEnd, numParticles, numberOfCells);
+	compute_force_kernel <<< numBlocks, numThreads >> >(dPos, dVelocity, dDensity, dPressure, dAcceleration, dHash, dIndex, dStart, dEnd, numParticles, numberOfCells);
 }

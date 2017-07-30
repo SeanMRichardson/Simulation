@@ -33,10 +33,9 @@
 #include "MoleculeSystem.h"
 
 
-
-#define START_X 10
-#define START_Y 10
-#define START_Z 10
+#define START_X 0
+#define START_Y 0
+#define START_Z 0
 
 //const size_t NUM_PARTICLES = 1000;
 
@@ -176,7 +175,7 @@ int main(int argc, char **argv)
 
 
 
-	m_system = new MoleculeSystem(ParticleSystemType::BOX, NUM_PARTICLES, MESH_WIDTH, vertices, glm::vec3(START_X, START_Y, START_Z));
+	m_system = new MoleculeSystem(MESH_WIDTH, vertices, glm::vec3(START_X, START_Y, START_Z));
 
 	
 
@@ -223,8 +222,6 @@ int main(int argc, char **argv)
 			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
 			glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "model"), 1, GL_FALSE, glm::value_ptr(model));
 
-			//glDrawArrays(GL_TRIANGLES, 0, 6);
-			//glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
 			glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
 		}
 
@@ -232,17 +229,16 @@ int main(int argc, char **argv)
 		{
 			if (play)
 			{
-				m_system->Update(deltaTime, device_vertices, normals);
+				m_system->Update(0.03, device_vertices, normals);
 			}
-			m_system->Render(proj, view);
+			m_system->Render(proj, view, HEIGHT, camera.Zoom);
 		}
-
+		
 		// write to buffer
 		glfwSwapBuffers(window);
 		// get events
 		glfwPollEvents();
 	}
-
 	cudaFree(device_vertices);
 	//delete[] vertices;
 	free(vertices);
@@ -404,50 +400,11 @@ void SetUp()
 void GenerateVertices(glm::vec3* vertices, GLbyte* data)
 {
 	CalculateVertices(vertices, data, MESH_WIDTH, MESH_HEIGHT);
-	/*for (int x = 0; x < MESHWIDTH; ++x)
-	{
-		for (int z = 0; z < MESHHEIGHT; ++z)
-		{
-			if ((x < MESHWIDTH) && (z < MESHHEIGHT))
-			{
-				int offset = (x* MESHWIDTH) + z;
-				vertices[offset].x = x;
-				vertices[offset].y = abs(data[offset]);
-				vertices[offset].z = -z;
-
-				printf("Offset = %d ", offset);
-				printf("%d ", x);
-				printf("%d ", abs(data[offset])*0.2);
-				printf("%d \n", z);
-			}
-		}
-	}*/
 }
 
-//GLuint GenerateIndices(GLuint* indices, GLuint numIndices)
 void GenerateIndices(GLuint* indices, GLuint numIndices, int width, int height)
 {
 	CalculateIndices(indices, numIndices, width, height);
-	/*for (int x = 0; x < MESH_WIDTH - 1; ++x)
-	{
-		for (int z = 0; z < MESH_HEIGHT - 1; ++z)
-		{
-			long a = (x * (MESH_WIDTH)) + z;
-			long b = ((x + 1) * (MESH_WIDTH)) + z;
-			long c = ((x + 1) * (MESH_WIDTH)) + (z + 1);
-			long d = (x * (MESH_WIDTH)) + (z + 1);
-
-			indices[numIndices++] = c;
-			indices[numIndices++] = b;
-			indices[numIndices++] = a;
-
-			indices[numIndices++] = a;
-			indices[numIndices++] = d;
-			indices[numIndices++] = c;
-
-		}
-	}
-	return numIndices; */
 }
 
 GLbyte* ReadHeightData(char* string, int numVerts)
@@ -462,7 +419,7 @@ GLbyte* ReadHeightData(char* string, int numVerts)
 
 	GLbyte* data = new GLbyte[numVerts];
 
-	int bytesRead = fread(data, 1, numVerts, f);
+	size_t bytesRead = fread(data, 1, numVerts, f);
 
 	int result = ferror(f);
 	if (result)

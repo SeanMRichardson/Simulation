@@ -28,15 +28,15 @@ calculate_vertices_kernel(glm::vec3* vertices, GLbyte* data, int width, int heig
 	//GLuint z = (blockIdx.y * blockDim.y) + threadIdx.y;
 
 	GLuint x = blockIdx.x;
-	GLuint y = blockIdx.y;
+	GLuint z = blockIdx.y;
 
-	int offset = (y * height) + x;
+	int offset = (z * height) + x;
 
-	if (x < width && y < height)
+	if (x < width && z < height)
 	{
 		vertices[offset].x = x;
-		vertices[offset].y = abs(data[offset]*0.4f);
-		vertices[offset].z = y;
+		vertices[offset].y = abs(data[offset]*0.4)-3.6f; //reading in the heights from the data, and applying offsets to make it more readable
+		vertices[offset].z = z;
 	}
 }
 
@@ -116,6 +116,5 @@ extern "C" void CalculateNormals(glm::vec3* normals, GLuint* indices, glm::vec3*
 	dim3 block(1, 1, 1);
 	dim3 grid(width*2, height*2);
 	calculate_normals_kernel << <grid, block >> > (normals, indices, vertices, width, height);
-
 }
 #endif

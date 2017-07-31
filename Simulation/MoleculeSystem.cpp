@@ -16,7 +16,7 @@ extern "C" void collide(glm::vec3 *newVel, glm::vec3 *sortedPos, glm::vec3 *sort
 
 MoleculeSystem::MoleculeSystem(int meshWidth, glm::vec3* vertices, glm::vec3 origin) : m_vertices(vertices)
 {
-	m_parameters.numberOfParticles = 16384;
+	m_parameters.numberOfParticles = 8192;
 	// grid configuration
 	m_numberOfGridCells = GRID_SIZE * GRID_SIZE * GRID_SIZE;
 	m_parameters.particleRadius = 1.0f / GRID_SIZE;
@@ -26,7 +26,7 @@ MoleculeSystem::MoleculeSystem(int meshWidth, glm::vec3* vertices, glm::vec3 ori
 	float cellSize = m_parameters.particleRadius * 2.0f;
 	m_parameters.cellSize = make_float3(cellSize, cellSize, cellSize);
 
-	m_parameters.smoothingRadius = 2.0f;
+	m_parameters.smoothingRadius = 1.3f;
 
 	// simulation parameters
 	// sph
@@ -41,9 +41,9 @@ MoleculeSystem::MoleculeSystem(int meshWidth, glm::vec3* vertices, glm::vec3 ori
 	m_parameters.damping = 0.02f;
 	m_parameters.shear = 0.1f;
 	m_parameters.attraction = 0.0f;
-	m_parameters.boundaryDamping = -0.5f;
-	m_parameters.gravity = make_float3(0.0f, -0.1f, 0.0f);
-	m_parameters.globalDamping = 1.0f;
+	m_parameters.boundaryDamping = -0.01f;
+	m_parameters.gravity = make_float3(0.0f, -0.5f, 0.0f);
+	m_parameters.globalDamping = 0.7f;
 
 	// check if kernel invocation generated an error
 	getLastCudaError("Kernel execution failed");
@@ -64,7 +64,7 @@ MoleculeSystem::MoleculeSystem(int meshWidth, glm::vec3* vertices, glm::vec3 ori
 MoleculeSystem::~MoleculeSystem()
 {
 	cudaFree(m_dCellEnd);
-	cudaFree(m_dPosition);
+	//(m_dPosition);
 	cudaFree(m_dVelocity);
 	cudaFree(m_dDensity);
 	cudaFree(m_dPressure);
@@ -82,7 +82,7 @@ MoleculeSystem::~MoleculeSystem()
 	delete[] m_hCellStart;
 	delete[] m_hCellEnd;
 	delete[] m_hAcceleration;
-	delete[] m_hParticleHash;
+	//delete[] m_hParticleHash;
 }
 
 /*
@@ -235,10 +235,10 @@ void MoleculeSystem::initGrid(GLuint *size, float spacing, float jitter, GLuint 
 
 				if (i < numParticles)
 				{
-					m_hPosition[i] = glm::vec3(	(spacing * x) + m_parameters.particleRadius + (rand()*2.0f)*jitter + origin.x, 
+					/*m_hPosition[i] = glm::vec3(	(spacing * x) + m_parameters.particleRadius + (rand()*2.0f)*jitter + origin.x, 
 												(spacing * y) + m_parameters.particleRadius + (rand()*2.0f)*jitter + origin.y, 
-												(spacing * z) + m_parameters.particleRadius + (rand()*2.0f)*jitter + origin.z);
-					//m_hPosition[i] = glm::vec3(origin.x + m_parameters.particleRadius + x * spacing, origin.y + m_parameters.particleRadius + y * spacing, origin.z + m_parameters.particleRadius + z * spacing);
+												(spacing * z) + m_parameters.particleRadius + (rand()*2.0f)*jitter + origin.z);*/
+					m_hPosition[i] = glm::vec3(origin.x + m_parameters.particleRadius + x * spacing, origin.y + m_parameters.particleRadius + y * spacing, origin.z + m_parameters.particleRadius + z * spacing);
 					m_hVelocity[i] = glm::vec3(0.0f);
 					m_hAcceleration[i] = glm::vec3(0.0f);
 					m_hDensity[i] = 0.0f;

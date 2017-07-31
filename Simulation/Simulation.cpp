@@ -243,7 +243,7 @@ int main(int argc, char **argv)
 	//delete[] vertices;
 	free(vertices);
 	delete[] indices;
-
+	delete m_system;
 	delete shader;
 	glDeleteVertexArrays(1, &vao);
 	glDeleteBuffers(1, &vbo);

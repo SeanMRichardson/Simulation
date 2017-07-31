@@ -591,10 +591,7 @@ glm::vec3 computeCellForce(GLuint index, glm::ivec3 neighbor, glm::vec3* dPos, g
 				totalCellForce += (float)(viscosityCoefficient*(1 / dDensity[neighbourIndex]) * e)*velDifference;				
 			}
 		}
-		//acceleration due to gravity
-		totalCellForce.x += params.gravity.x;
-		totalCellForce.y += params.gravity.y;
-		totalCellForce.z += params.gravity.z;
+
 	}
 	
 	return totalCellForce;
@@ -623,6 +620,12 @@ void compute_force_kernel(glm::vec3* dPos, glm::vec3* dVelocity, float* dDensity
 			}
 		}
 	}
+
+	//acceleration due to gravity
+	totalForce.x += params.gravity.x;
+	totalForce.y += params.gravity.y;
+	totalForce.z += params.gravity.z;
+
 	dAcceleration[index] = totalForce;
 }
 

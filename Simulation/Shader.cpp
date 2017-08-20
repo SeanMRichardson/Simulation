@@ -1,27 +1,30 @@
 #include "stdafx.h"
 #include "Shader.h"
 
-
+// Constructor
 Shader::Shader(std::string vFile, std::string fFile, std::string gFile)
 {
+	// create the program
 	program = glCreateProgram();
+
+	// add shader instances
 	objects[SHADER_VERTEX] = GenerateShader(vFile, GL_VERTEX_SHADER);
 	objects[SHADER_FRAGMENT] = GenerateShader(fFile, GL_FRAGMENT_SHADER);
 	objects[SHADER_GEOMETRY] = 0;
 
+	// add geometry shader instance
 	if (!gFile.empty())
 	{
 		objects[SHADER_GEOMETRY] = GenerateShader(gFile, GL_GEOMETRY_SHADER);
 		glAttachShader(program, objects[SHADER_GEOMETRY]);
 	}
 
+	// attach fragment and vertex shader
 	glAttachShader(program, objects[SHADER_VERTEX]);
 	glAttachShader(program, objects[SHADER_FRAGMENT]);
-
-	//SetDefaultAttributes();
 }
 
-
+// clean up
 Shader::~Shader(void)
 {
 	for (int i = 0; i < 3; ++i)
@@ -32,10 +35,10 @@ Shader::~Shader(void)
 	glDeleteProgram(program);
 }
 
+// create a shader instance
 GLuint Shader::GenerateShader(std::string from, GLenum type)
 {
-	std::cout << "Compiling Shader..." << std::endl;
-
+	// load the shader from a file
 	std::string load;
 	if (!LoadShaderFile(from, load))
 	{
@@ -44,8 +47,10 @@ GLuint Shader::GenerateShader(std::string from, GLenum type)
 		return 0;
 	}
 
+	// create the shader
 	GLuint shader = glCreateShader(type);
 
+	// compile the shader
 	const char* chars = load.c_str();
 	glShaderSource(shader, 1, &chars, NULL);
 	glCompileShader(shader);
@@ -68,6 +73,7 @@ GLuint Shader::GenerateShader(std::string from, GLenum type)
 	return shader;
 }
 
+// load shader data from a file
 bool Shader::LoadShaderFile(std::string from, std::string& into)
 {
 	std::ifstream file;
@@ -92,15 +98,7 @@ bool Shader::LoadShaderFile(std::string from, std::string& into)
 	return true;
 }
 
-void Shader::SetDefaultAttributes()
-{
-	glBindAttribLocation(program, 0, "position");
-	glBindAttribLocation(program, 1, "colour");
-	glBindAttribLocation(program, 2, "normal");
-	glBindAttribLocation(program, 3, "tangent");
-	glBindAttribLocation(program, 4, "texCoord");
-}
-
+// link a program
 bool Shader::LinkProgram()
 {
 	if (loadFailed)

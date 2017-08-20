@@ -108,9 +108,9 @@ int main(int argc, char **argv)
 	data = ReadHeightData("Textures/Kilamanjaro.Raw", numVerts);
 	GLbyte* device_data;
 
+	// allocate cuda memory for terrain vertex data
 	checkCudaErrors(cudaMalloc((void **)&device_data, numVerts * sizeof(GLbyte)));
 	checkCudaErrors(cudaMemcpy((void*)device_data, (void*)data, numVerts, cudaMemcpyHostToDevice));
-
 	glm::vec3* device_vertices;
 
 	// allocate storage on device for vertex data
@@ -118,78 +118,106 @@ int main(int argc, char **argv)
 	checkCudaErrors(cudaMalloc((void **)&device_vertices, spectrumSize));
 	vertices = (glm::vec3*)malloc(spectrumSize);
 
+	// generate terrain vertices on cuda
 	GenerateVertices(device_vertices, device_data);
-	//GenerateVertices(vertices, data);
 
 	// read vertices data back from cuda
 	checkCudaErrors(cudaMemcpy((void*)vertices, (void*)device_vertices, spectrumSize, cudaMemcpyDeviceToHost));
 
+	// free up cuda memory
 	cudaFree(device_data);
-	//cudaFree(device_vertices);
 
+	// allocate cuda memory for terrain indices data
 	GLuint* device_indices;
 	checkCudaErrors(cudaMalloc((void **)&device_indices, indexCount * sizeof(GLuint)));
 	indices = (GLuint*)malloc(indexCount * sizeof(GLuint));
 
+	// generate terrain indices on cuda
 	GenerateIndices(device_indices, indexCount, MESH_WIDTH, MESH_HEIGHT);
 	checkCudaErrors(cudaMemcpy((void*)indices, (void*)device_indices, indexCount * sizeof(GLuint), cudaMemcpyDeviceToHost));
 
+	// allocate cuda memory for terrain normals data
 	glm::vec3* device_normals;
 	checkCudaErrors(cudaMalloc((void **)&device_normals, spectrumSize));
 	normals = (glm::vec3*)malloc(spectrumSize);
 
-
+	// copy data for normal creation to cuda device
 	checkCudaErrors(cudaMemcpy((void*)device_vertices, (void*)vertices, numVerts, cudaMemcpyHostToDevice));
 	checkCudaErrors(cudaMemcpy((void*)device_indices, (void*)indices, indexCount, cudaMemcpyHostToDevice));
 
+	// generate terrain normals on cuda
 	CalculateNormals(device_normals, device_indices, device_vertices, MESH_WIDTH, MESH_HEIGHT);
 
 	checkCudaErrors(cudaMemcpy((void*)normals, (void*)device_normals, spectrumSize, cudaMemcpyDeviceToHost));
 
-	
+	// free up cuda memory
 	cudaFree(device_indices);
 	cudaFree(device_normals);
 
 	glEnable(GL_DEPTH_TEST);
 
+	// load terrain shaders
 	shader = new Shader("Shaders/vertex.glsl", "Shaders/fragment.glsl");
 	if (!shader->LinkProgram())
 	{
 		return 0;
 	}
 
-	if (checkCmdLineFlag(argc, (const char **)argv, "device"))
-	{
-		printf("[%s]\n", argv[0]);
-		printf("   Does not explicitly support -device=n in OpenGL mode\n");
-		printf("   To use -device=n, the sample must be running w/o OpenGL\n\n");
-		printf(" > %s -device=n -qatest\n", argv[0]);
-		printf("exiting...\n");
+	//if (checkCmdLineFlag(argc, (const char **)argv, "device"))
+	//{
+	//	printf("[%s]\n", argv[0]);
+	//	printf("   Does not explicitly support -device=n in OpenGL mode\n");
+	//	printf("   To use -device=n, the sample must be running w/o OpenGL\n\n");
+	//	printf(" > %s -device=n -qatest\n", argv[0]);
+	//	printf("exiting...\n");
 
-		exit(EXIT_SUCCESS);
-	}
+	//	exit(EXIT_SUCCESS);
+	//}
 
-	
-
+	// open gl config
 	SetUp();
 
-
-
+	// create the molecule system instance
 	m_system = new MoleculeSystem(MESH_WIDTH, vertices, glm::vec3(START_X, START_Y, START_Z));
 
+	// fps variables
+	float fps = 0;
+	float tempfps = 0;
+	int count = 0;
 	
-
 	// simulation loop
 	while (!glfwWindowShouldClose(window))
 	{
-		float currentFrame = glfwGetTime();
+		// calculate delta time 
+		float currentFrame = (float)glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
+		
+		//calculate average fps over 30 frames
+		if (count < 30)
+		{
+			++count;
+			tempfps += 1.0f/deltaTime;
+		}
+		else
+		{
+			count = 0;
+			fps = tempfps / 30.0f;
+			tempfps = 0.0f;
+		}
 		lastFrame = currentFrame;
 
+		// apply fps to the title bar
+		std::stringstream windowTitle;
+		windowTitle << "Sean Richardson SPH Fluid Simulation  FPS: [ " << fps << " ]";
+
+		glfwSetWindowTitle(window, windowTitle.str().c_str());
+		// handle input
 		processInput(window);
 
+		// define projection and view matrices
 		glm::mat4 proj, view;
-		//draw height data
+		
+		//draw heightmap data
 		{
 			// reset the color
 			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -200,7 +228,7 @@ int main(int argc, char **argv)
 			// draw stuff
 			glUseProgram(shader->GetProgram());
 
-
+			// pass variables to shaders
 			proj = glm::perspective(glm::radians(camera.Zoom), (float)screenWidth / (float)screenHeight, 0.1f, 10000.0f);
 
 			glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "proj"), 1, GL_FALSE, glm::value_ptr(proj));
@@ -222,6 +250,7 @@ int main(int argc, char **argv)
 			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
 			glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "model"), 1, GL_FALSE, glm::value_ptr(model));
 
+			// draw terrain
 			glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
 		}
 
@@ -229,7 +258,7 @@ int main(int argc, char **argv)
 		{
 			if (play)
 			{
-				m_system->Update(0.03, device_vertices, normals);
+				m_system->Update(0.03f/*deltaTime*/, device_vertices, normals);
 			}
 			m_system->Render(proj, view, HEIGHT, camera.Zoom);
 		}
@@ -239,8 +268,9 @@ int main(int argc, char **argv)
 		// get events
 		glfwPollEvents();
 	}
+
+	// tidy up
 	cudaFree(device_vertices);
-	//delete[] vertices;
 	free(vertices);
 	delete[] indices;
 	delete m_system;
@@ -249,12 +279,12 @@ int main(int argc, char **argv)
 	glDeleteBuffers(1, &vbo);
 	glDeleteBuffers(1, &nbo);
 	glDeleteBuffers(1, &ebo);
-	// tidy up
 	glfwTerminate();
 
 	return EXIT_SUCCESS;
 }
 
+// handle keyboard input
 void processInput(GLFWwindow* window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -273,19 +303,20 @@ void processInput(GLFWwindow* window)
 		play = true;
 }
 
+// handle mouse
 void mouseCallback(GLFWwindow* window, double xPos, double yPos)
 {
 	if (firstMouse)
 	{
-		lastX = xPos;
-		lastY = yPos;
+		lastX = (float)xPos;
+		lastY = (float)yPos;
 		firstMouse = false;
 	}
 
-	float xoffset = xPos - lastX;
-	float yoffset = lastY - yPos;
-	lastX = xPos;
-	lastY = yPos;
+	float xoffset = (float)xPos - lastX;
+	float yoffset = lastY - (float)yPos;
+	lastX = (float)xPos;
+	lastY = (float)yPos;
 
 	float sensitivity = 0.1f;
 	xoffset *= sensitivity;
@@ -294,9 +325,10 @@ void mouseCallback(GLFWwindow* window, double xPos, double yPos)
 	camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
+// handle mouse scroll
 void scrollCallback(GLFWwindow* window, double xOffset, double yOffest)
 {
-	camera.ProcessMouseScroll(yOffest);
+	camera.ProcessMouseScroll((float)yOffest);
 }
 
 int init()
@@ -397,16 +429,19 @@ void SetUp()
 	
 }
 
+// generate vertex data for height map
 void GenerateVertices(glm::vec3* vertices, GLbyte* data)
 {
 	CalculateVertices(vertices, data, MESH_WIDTH, MESH_HEIGHT);
 }
 
+// generate index data for height map
 void GenerateIndices(GLuint* indices, GLuint numIndices, int width, int height)
 {
 	CalculateIndices(indices, numIndices, width, height);
 }
 
+// read height map data from a file
 GLbyte* ReadHeightData(char* string, int numVerts)
 {
 	FILE *f = NULL;

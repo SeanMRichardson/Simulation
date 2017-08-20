@@ -12,9 +12,12 @@ uniform mat4 proj;
 
 void main()
 {
+	// the vertex position for colouring
 	FragPos = vec3(model * vec4(aPos, 1.0));
 	Normal = mat3(transpose(inverse(model)))*aNormal;
 
+	// set the viewing direction for the vertex
 	gl_Position = proj*view * vec4(FragPos, 1.0);
+	//set the point size for the mesh
 	gl_PointSize = 4.0f;
 }

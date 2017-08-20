@@ -7,34 +7,34 @@
 #include <vector_types.h>
 #include <helper_math.h>
 
-
-
+// the set of parameters used for the simulation, shared between device and host .... so both can access the values
 struct SimulationParameters
 {
-	int numberOfParticles;
+	int numberOfParticles; // number of particles in the simulation
 
-	float3 gravity;
-	float globalDamping;
-	float particleRadius;
-	float smoothingRadius;
+	float mass; // the mass of each particle
+	float3 gravity; // the system grivity
+	float globalDamping; // a multiplcation factor used to make the simuation more releastic 1.0f - no damping, 0.5f all velocities with be halved
+	float particleRadius; // the size of each particle
+	
 
-	float3 gridSize;
-	GLuint numCells;
-	float3 cellSize;
+	float3 gridSize; // the dimensions of the uniform grid
+	GLuint numCells; // the number of cells in the uniform grid
+	float3 cellSize; // the size of each cell in the uniform grid
 
-	GLuint maxParticlesPerCell;
+	GLuint maxParticlesPerCell; // the maximum number of particles that can fit in a cell of the uniform grid
 
-	float mass;
-	float particleDensity;
-	float restDensity;
-	float gasConstant;
-	float viscosityCoefficient;
+	float smoothingRadius; // used by SPH to determine how close other partciles need to be to affect each other
+	
+	float restDensity; // the density of a particle, used in SPH
+	float gasConstant; // used in SPH in calulating the pressures acting on a particle
+	float viscosityCoefficient; // how viscous the fluid is, used by SPH in calculating the forces on a particle
 
-	float spring;
-	float damping;
-	float shear;
-	float attraction;
-	float boundaryDamping;
+	float spring; // the spring force applied when particles collide
+	float damping; // the damping that occurs between particles on a collision
+	float shear; // the shear force applied when particles collide
+	float attraction; // the attraction force between particles
+	float boundaryDamping; // the damping that occurs when a particle hits a wall
 };
 
 

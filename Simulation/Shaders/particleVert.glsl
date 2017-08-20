@@ -13,17 +13,17 @@ uniform float pointRadius;
 
 void main()
 {
+	// get the viewing direction
 	vec4 eyePos = matModelview * vVertex;
 	gl_Position = matProjection * eyePos;
 
+	//get the object colour
 	outColor = vColor;
 
+	// find the distance from the eye to the object
 	float dist = length(eyePos.xyz);
 	float att = inversesqrt(0.1f*dist);
-	//gl_PointSize = 2.0f * att;
 
-	// calculate window-space point size
-	/*vec3 posEye = vec3(gl_ModelViewMatrix * vec4(gl_Vertex.xyz, 1.0));
-	float dist = length(posEye);*/
+	// calculate the correct viewing scale for the GL_POINT 
 	gl_PointSize = pointRadius * (pointScale / dist);
 }

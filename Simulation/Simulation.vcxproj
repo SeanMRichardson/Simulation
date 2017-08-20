@@ -176,18 +176,14 @@
   <ItemGroup>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="defines.h" />
-    <ClInclude Include="Molecule.h" />
     <ClInclude Include="MoleculeSystem.cuh" />
     <ClInclude Include="MoleculeSystem.h" />
-    <ClInclude Include="Octree.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Molecule.cpp" />
     <ClCompile Include="MoleculeSystem.cpp" />
-    <ClCompile Include="Octree.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Simulation.cpp" />
     <ClCompile Include="stdafx.cpp">
